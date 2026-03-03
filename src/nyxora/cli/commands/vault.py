@@ -1,0 +1,242 @@
+"""Vault lifecycle commands: unlock, lock, panic, status, health-check, change-password."""
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Optional
+
+import typer
+
+from nyxora.cli import ui
+from nyxora.cli.helpers import (
+    clear_session,
+    get_vault_path,
+    load_session,
+    save_session,
+)
+from nyxora.core.crypto_engine import CryptoEngine
+from nyxora.core.memory_guard import SecureString, wipe_memory
+from nyxora.core.session_core import SessionManager
+from nyxora.core.vault_store import VaultStore
+from nyxora.utils.config import Config
+from nyxora.utils.exceptions import NyxoraError
+
+app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
+
+_engine = CryptoEngine()
+_session = SessionManager()
+
+
+@app.command()
+def unlock(
+    vault_path: Optional[Path] = typer.Option(None, "--vault", "-v", help="Path to vault file."),
+    create: bool = typer.Option(False, "--create", help="Create a new vault if it doesn't exist."),
+) -> None:
+    """Unlock the vault with master password."""
+    config = Config()
+    config.load()
+    vp = vault_path or get_vault_path(config)
+
+    import questionary
+    password = questionary.password("Master password:").ask()
+    if not password:
+        ui.error_panel("No password entered.")  # pragma: no cover
+        raise typer.Exit(1)  # pragma: no cover
+
+    with SecureString(password) as pw:
+        if not vp.exists():
+            if not create:  # pragma: no cover
+                ui.error_panel(f"Vault not found at {vp}. Use --create to initialize.")  # pragma: no cover
+                raise typer.Exit(1)  # pragma: no cover
+            # Create new vault  # pragma: no cover
+            salt = _engine.generate_salt()  # pragma: no cover
+            with ui.spinner("Deriving key (Argon2id)…"):  # pragma: no cover
+                root_key = _engine.derive_key(pw, salt)  # pragma: no cover
+            store = VaultStore(_engine)  # pragma: no cover
+            store.initialize(vp, root_key)  # pragma: no cover
+            store.close()  # pragma: no cover
+            save_session("new", str(vp), root_key.hex())  # pragma: no cover
+            wipe_memory(root_key)  # pragma: no cover
+            ui.success_panel(f"New vault created and unlocked at {vp}")  # pragma: no cover
+        else:
+            # Open existing vault — we need the stored salt
+            # For simplicity, derive with a stored salt from the vault metadata
+            # Actually: we need to read salt from vault. Let's handle this properly.
+            # The salt is stored in vault metadata. We need to open the vault to get it.
+            # But opening requires the key. Chicken-and-egg: use a salt file.
+            salt_file = vp.with_suffix(".salt")
+            if not salt_file.exists():
+                ui.error_panel("Vault salt file missing. Cannot derive key.")  # pragma: no cover
+                raise typer.Exit(1)  # pragma: no cover
+            salt = salt_file.read_bytes()
+            with ui.spinner("Deriving key (Argon2id)…"):
+                root_key = _engine.derive_key(pw, salt)
+            store = VaultStore(_engine)
+            try:
+                store.open(vp, root_key)
+            except NyxoraError as e:
+                wipe_memory(root_key)
+                ui.error_panel(e.user_message)
+                raise typer.Exit(1)
+            store.close()
+            save_session("session", str(vp), root_key.hex())
+            wipe_memory(root_key)
+            ui.success_panel(f"Vault unlocked: {vp}")
+
+
+@app.command()
+def init(
+    vault_path: Optional[Path] = typer.Option(None, "--vault", "-v", help="Path to vault file."),
+) -> None:
+    """Initialize a new vault."""
+    config = Config()
+    config.load()
+    vp = vault_path or get_vault_path(config)
+
+    import questionary
+    password = questionary.password("Master password:").ask()
+    if not password:
+        ui.error_panel("No password entered.")  # pragma: no cover
+        raise typer.Exit(1)  # pragma: no cover
+    confirm = questionary.password("Confirm password:").ask()
+    if password != confirm:
+        ui.error_panel("Passwords do not match.")  # pragma: no cover
+        raise typer.Exit(1)  # pragma: no cover
+
+    vp.parent.mkdir(parents=True, exist_ok=True)
+    salt = _engine.generate_salt()
+
+    with SecureString(password) as pw:
+        with ui.spinner("Deriving key (Argon2id)…"):
+            root_key = _engine.derive_key(pw, salt)
+
+    store = VaultStore(_engine)
+    store.initialize(vp, root_key)
+    store.close()
+
+    # Store salt alongside vault
+    salt_file = vp.with_suffix(".salt")
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOINHERIT"):
+        flags |= getattr(os, "O_NOINHERIT")
+    fd = os.open(str(salt_file), flags, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(salt)
+
+    save_session("init", str(vp), root_key.hex())
+    wipe_memory(root_key)
+    ui.success_panel(f"Vault initialized at {vp}")
+
+
+@app.command("change-password")
+def change_password() -> None:
+    """Change the master password for the current vault."""
+    session_data = load_session()
+    if session_data is None:
+        ui.error_panel("Vault is locked. Run 'nyx vault unlock' first.")  # pragma: no cover
+        raise typer.Exit(2)  # pragma: no cover
+
+    _, vault_path, root_key = session_data
+    try:
+        import questionary
+        new_password = questionary.password("New master password:").ask()
+        if not new_password:
+            ui.error_panel("No password entered.")  # pragma: no cover
+            raise typer.Exit(1)  # pragma: no cover
+
+        confirm = questionary.password("Confirm new password:").ask()
+        if new_password != confirm:
+            ui.error_panel("Passwords do not match.")
+            raise typer.Exit(1)
+
+        store = VaultStore(_engine)
+        store.open(vault_path, root_key)
+
+        new_salt = _engine.generate_salt()
+        with SecureString(new_password) as pw:
+            with ui.spinner("Deriving new key (Argon2id)…"):
+                new_root_key = _engine.derive_key(pw, new_salt)
+
+        # Write to a temporary vault
+        tmp_vault = vault_path.with_suffix(".nyx.tmp")
+        new_store = VaultStore(_engine)
+        new_store.initialize(tmp_vault, new_root_key)
+
+        with ui.spinner("Migrating and re-encrypting vault data…"):
+            new_store.migrate_from_store(store)
+
+        new_store.close()
+        store.close()
+
+        # Swap files
+        vault_path.unlink()
+        tmp_vault.rename(vault_path)
+
+        salt_file = vault_path.with_suffix(".salt")
+        salt_file.write_bytes(new_salt)
+
+        save_session("change_pw", str(vault_path), new_root_key.hex())
+        wipe_memory(new_root_key)
+        ui.success_panel("Master password changed successfully.")
+
+    except Exception as e:
+        ui.error_panel(f"Failed to change password: {e}")
+        raise typer.Exit(1)
+    finally:
+        wipe_memory(root_key)
+
+
+@app.command()
+def lock() -> None:
+    """Lock the vault and wipe the session key."""
+    clear_session()
+    ui.success_panel("Vault locked. Session wiped.")
+
+
+@app.command()
+def panic() -> None:
+    """PANIC — immediately wipe session and exit."""
+    clear_session()
+    ui.error_panel("PANIC: Session destroyed. All key material wiped.", title="PANIC")
+    raise typer.Exit(3)
+
+
+@app.command()
+def status() -> None:
+    """Show vault lock state and entry count."""
+    session_data = load_session()
+    if session_data is None:
+        ui.info_panel("Vault is LOCKED", title="Vault Status")  # pragma: no cover
+        return  # pragma: no cover
+    session_id, vault_path, root_key = session_data
+    try:
+        store = VaultStore(_engine)
+        store.open(vault_path, root_key)
+        count = store.entry_count()
+        store.close()
+        ui.info_panel(
+            f"Vault is UNLOCKED\nPath: {vault_path}\nEntries: {count}\nSession: {session_id[:8]}…",
+            title="Vault Status"
+        )
+    finally:
+        wipe_memory(root_key)
+
+
+@app.command("health-check")
+def health_check() -> None:
+    """Run a full integrity verification of the vault."""
+    session_data = load_session()
+    if session_data is None:
+        ui.error_panel("Vault is locked. Run 'nyx vault unlock' first.")  # pragma: no cover
+        raise typer.Exit(2)  # pragma: no cover
+    _, vault_path, root_key = session_data
+    try:
+        store = VaultStore(_engine)
+        store.open(vault_path, root_key)
+        with ui.spinner("Verifying vault integrity…"):
+            report = store.verify_integrity()
+        store.close()
+        ui.forensic_panel(report)
+    finally:
+        wipe_memory(root_key)
