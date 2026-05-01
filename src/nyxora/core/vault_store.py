@@ -14,6 +14,7 @@ Integrity model:
 
 from __future__ import annotations
 
+import hmac
 import sqlite3
 import time
 import uuid
@@ -310,7 +311,7 @@ class VaultStore:
             raise IntegrityError("Vault HMAC is missing from metadata.")  # pragma: no cover
         stored = bytes.fromhex(row["value"])
         expected = self._compute_vault_hmac(conn, self._hmac_key)
-        if stored != expected:
+        if not hmac.compare_digest(stored, expected):
             raise IntegrityError("Vault-wide HMAC mismatch — entry deletion or insertion detected.")  # pragma: no cover
 
     # ── Audit log ──────────────────────────────────────────────────────────
@@ -550,14 +551,15 @@ class VaultStore:
 
     def delete_entry(self, entry_id: str, session_id: str | None = None) -> None:
         """Soft-delete an entry (is_deleted=1)."""
-        conn, _, _ = self._require_open()
-        _, _, hmac_key = self._require_open()
+        conn, _, hmac_key = self._require_open()
 
         row = conn.execute(
             "SELECT * FROM entries WHERE id=? AND is_deleted=0", (entry_id,)
         ).fetchone()
         if row is None:
             raise EntryNotFoundError(f"Entry '{entry_id}' not found.")
+
+        self._verify_entry_hmac(row, hmac_key)
 
         with conn:
             conn.execute(
@@ -787,7 +789,7 @@ class VaultStore:
         stored_hmac = bytes(row["entry_hmac"])
         expected_hmac = self._crypto.compute_entry_hmac(row["id"], fields, hmac_key)
 
-        if stored_hmac != expected_hmac:
+        if not hmac.compare_digest(stored_hmac, expected_hmac):
             raise IntegrityError(
                 f"Entry HMAC mismatch for entry {row['id']} — tampering detected."
             )

@@ -47,6 +47,7 @@ class SessionManager:
         self._inactivity_timeout = inactivity_timeout
         self._monitor_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._running: bool = False
 
     # ── Unlock / Lock ──────────────────────────────────────────────────────
 
@@ -74,8 +75,8 @@ class SessionManager:
 
     def lock(self, reason: str = "manual") -> None:
         """Wipe the root key from memory and stop the inactivity monitor."""
-        self._running = False
         with self._lock:
+            self._running = False
             if self._root_key is not None:
                 wipe_memory(self._root_key)
                 self._root_key = None
@@ -83,8 +84,8 @@ class SessionManager:
 
     def panic_lock(self) -> None:
         """Immediate wipe, clear all state. No cleanup — fast and brutal."""
-        self._running = False
         with self._lock:
+            self._running = False
             if self._root_key is not None:
                 wipe_memory(self._root_key)
                 self._root_key = None
@@ -164,17 +165,17 @@ class SessionManager:
 
     def _start_inactivity_monitor(self) -> None:
         """Start (or restart) the daemon thread that auto-locks on inactivity."""
-        self._running = True
-
-        if self._monitor_thread is not None and self._monitor_thread.is_alive():
-            return  # already running
+        with self._lock:
+            self._running = True
+            if self._monitor_thread is not None and self._monitor_thread.is_alive():
+                return  # already running
 
         def _monitor() -> None:
-            while self._running:
+            while True:
                 time.sleep(5)  # check every 5 seconds
-                if not self._running:
-                    break
                 with self._lock:
+                    if not self._running:
+                        break
                     if self._root_key is None:
                         break  # pragma: no cover
                     elapsed = time.time() - self._last_activity

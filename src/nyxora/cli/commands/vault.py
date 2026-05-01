@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -15,7 +16,7 @@ from nyxora.cli.helpers import (
     save_session,
 )
 from nyxora.core.crypto_engine import CryptoEngine
-from nyxora.core.memory_guard import SecureString, wipe_memory
+from nyxora.core.memory_guard import SecureString, generate_session_token, wipe_memory
 from nyxora.core.session_core import SessionManager
 from nyxora.core.vault_store import VaultStore
 from nyxora.utils.config import Config
@@ -43,6 +44,8 @@ def unlock(
         ui.error_panel("No password entered.")  # pragma: no cover
         raise typer.Exit(1)  # pragma: no cover
 
+    session_token = generate_session_token()
+
     with SecureString(password) as pw:
         if not vp.exists():
             if not create:  # pragma: no cover
@@ -55,15 +58,12 @@ def unlock(
             store = VaultStore(_engine)  # pragma: no cover
             store.initialize(vp, root_key)  # pragma: no cover
             store.close()  # pragma: no cover
-            save_session("new", str(vp), root_key.hex())  # pragma: no cover
+            _session.unlock(root_key, session_token)  # pragma: no cover
+            _session.record_successful_unlock()  # pragma: no cover
+            save_session(session_token, str(vp), root_key.hex())  # pragma: no cover
             wipe_memory(root_key)  # pragma: no cover
             ui.success_panel(f"New vault created and unlocked at {vp}")  # pragma: no cover
         else:
-            # Open existing vault — we need the stored salt
-            # For simplicity, derive with a stored salt from the vault metadata
-            # Actually: we need to read salt from vault. Let's handle this properly.
-            # The salt is stored in vault metadata. We need to open the vault to get it.
-            # But opening requires the key. Chicken-and-egg: use a salt file.
             salt_file = vp.with_suffix(".salt")
             if not salt_file.exists():
                 ui.error_panel("Vault salt file missing. Cannot derive key.")  # pragma: no cover
@@ -75,11 +75,14 @@ def unlock(
             try:
                 store.open(vp, root_key)
             except NyxoraError as e:
+                _session.record_failed_attempt()
                 wipe_memory(root_key)
                 ui.error_panel(e.user_message)
                 raise typer.Exit(1)
             store.close()
-            save_session("session", str(vp), root_key.hex())
+            _session.unlock(root_key, session_token)
+            _session.record_successful_unlock()
+            save_session(session_token, str(vp), root_key.hex())
             wipe_memory(root_key)
             ui.success_panel(f"Vault unlocked: {vp}")
 
@@ -105,6 +108,7 @@ def init(
 
     vp.parent.mkdir(parents=True, exist_ok=True)
     salt = _engine.generate_salt()
+    session_token = generate_session_token()
 
     with SecureString(password) as pw:
         with ui.spinner("Deriving key (Argon2id)…"):
@@ -124,7 +128,7 @@ def init(
     with os.fdopen(fd, "wb") as f:
         f.write(salt)
 
-    save_session("init", str(vp), root_key.hex())
+    save_session(session_token, str(vp), root_key.hex())
     wipe_memory(root_key)
     ui.success_panel(f"Vault initialized at {vp}")
 
@@ -138,6 +142,7 @@ def change_password() -> None:
         raise typer.Exit(2)  # pragma: no cover
 
     _, vault_path, root_key = session_data
+    session_token = generate_session_token()
     try:
         import questionary
         new_password = questionary.password("New master password:").ask()
@@ -158,10 +163,10 @@ def change_password() -> None:
             with ui.spinner("Deriving new key (Argon2id)…"):
                 new_root_key = _engine.derive_key(pw, new_salt)
 
-        # Write to a temporary vault
-        tmp_vault = vault_path.with_suffix(".nyx.tmp")
+        # Write re-encrypted data to a new temporary vault
+        new_vault = vault_path.with_suffix(".nyx.new")
         new_store = VaultStore(_engine)
-        new_store.initialize(tmp_vault, new_root_key)
+        new_store.initialize(new_vault, new_root_key)
 
         with ui.spinner("Migrating and re-encrypting vault data…"):
             new_store.migrate_from_store(store)
@@ -169,14 +174,41 @@ def change_password() -> None:
         new_store.close()
         store.close()
 
-        # Swap files
-        vault_path.unlink()
-        tmp_vault.rename(vault_path)
+        # Verify the new vault opens correctly before touching the original
+        verify_store = VaultStore(_engine)
+        try:
+            verify_store.open(new_vault, new_root_key)
+            verify_store.close()
+        except Exception:
+            new_vault.unlink(missing_ok=True)
+            raise
+
+        # Atomic swap: back up original, promote new, remove backup
+        bak_vault = vault_path.with_suffix(".nyx.bak")
+
+        def _rename(src: Path, dst: Path) -> None:
+            try:
+                src.rename(dst)
+            except OSError:
+                shutil.move(str(src), str(dst))
+
+        try:
+            _rename(vault_path, bak_vault)
+            _rename(new_vault, vault_path)
+            bak_vault.unlink(missing_ok=True)
+        except Exception:
+            if bak_vault.exists() and not vault_path.exists():
+                try:
+                    _rename(bak_vault, vault_path)
+                except Exception:
+                    pass
+            new_vault.unlink(missing_ok=True)
+            raise
 
         salt_file = vault_path.with_suffix(".salt")
         salt_file.write_bytes(new_salt)
 
-        save_session("change_pw", str(vault_path), new_root_key.hex())
+        save_session(session_token, str(vault_path), new_root_key.hex())
         wipe_memory(new_root_key)
         ui.success_panel("Master password changed successfully.")
 
