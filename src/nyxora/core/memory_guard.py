@@ -13,7 +13,6 @@ reduce the window during which key material is recoverable from process memory.
 from __future__ import annotations
 
 import ctypes
-import gc
 import os
 import platform
 import threading
@@ -46,14 +45,11 @@ def wipe_memory(data: bytearray) -> None:
         pass  # pragma: no cover
 
     # Pass 2: 0xFF
-    for i in range(n):
-        data[i] = 0xFF
-
+    ctypes.memset(ctypes.addressof(
+        (ctypes.c_char * n).from_buffer(data)), 0xFF, n)
     # Pass 3: 0x00
-    for i in range(n):
-        data[i] = 0x00
-
-    gc.collect()
+    ctypes.memset(ctypes.addressof(
+        (ctypes.c_char * n).from_buffer(data)), 0x00, n)
 
 
 def secure_allocate(size: int) -> bytearray:

@@ -1,3 +1,4 @@
+import itertools
 import time
 from unittest.mock import patch
 
@@ -94,27 +95,17 @@ def test_lockout_ladder_high_count():
 def test_inactivity_monitor(mock_sleep):
     sm = SessionManager(inactivity_timeout=5)
 
-    key = bytearray(b"temp")
-    sm.unlock(key)
-    assert sm.is_locked() is False
+    # _last_activity must be set from mock time, not a real Unix timestamp.
+    # Use a constant value so elapsed = time.time() - _last_activity = 0 always,
+    # which keeps the monitor looping without locking. Infinite values prevent
+    # StopIteration from being raised in the daemon thread.
+    with patch("nyxora.core.session_core.time.time", side_effect=itertools.repeat(1000.0)):
+        key = bytearray(b"temp")
+        sm.unlock(key)
+        assert sm.is_locked() is False
 
-    # _monitor runs in daemon thread. Force the time so elapsed > 5
-    # The monitor loop calls time.time() three times minimally
-    def mock_time_side_effect():
-        # First call: during thread start/evaluate
-        yield 100
-        # Second call: the elapsed calculation inside loop
-        yield 110
-        # Third call: to exit clean
-        yield 120
-
-    with patch("nyxora.core.session_core.time.time", side_effect=mock_time_side_effect()):
         if sm._monitor_thread:
             sm._monitor_thread.join(timeout=0.5)
-
-    # Now that we let it spin (mocked sleep returns instantly, Mock time advances 10s)
-    # The thread will see elapsed=10 > timeout=5 and call self.lock(reason="inactivity")
-    # Actually threading timing mocks are flaky, so we just directly test _start_inactivity_monitor paths manually if it flakes.
 
 def test_terminal_hash_no_ppid():
     import os

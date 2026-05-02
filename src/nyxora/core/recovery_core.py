@@ -95,10 +95,16 @@ class RecoveryManager:
 
         salt = self._crypto.generate_salt()
         capsule_key = self._crypto.derive_key(capsule_password, salt)
+        inner_key = self._crypto._hkdf_derive(
+            capsule_key, b"nyxora:capsule:inner"
+        )
+        outer_key = self._crypto._hkdf_derive(
+            capsule_key, b"nyxora:capsule:outer"
+        )
 
         try:
-            # Inner encryption: encrypt the root key with the capsule key
-            inner_ef = self._crypto.encrypt_field(bytes(root_key), capsule_key)
+            # Inner encryption: encrypt the root key with a dedicated derived key
+            inner_ef = self._crypto.encrypt_field(bytes(root_key), inner_key)
 
             payload = {
                 "version": CAPSULE_VERSION,
@@ -109,12 +115,14 @@ class RecoveryManager:
             }
             payload_bytes = orjson.dumps(payload)
 
-            # Outer encryption: encrypt the JSON payload with the capsule key
-            outer_ef = self._crypto.encrypt_field(payload_bytes, capsule_key)
+            # Outer encryption: encrypt the JSON payload with a dedicated derived key
+            outer_ef = self._crypto.encrypt_field(payload_bytes, outer_key)
             outer_blob = outer_ef.to_bytes()
 
         finally:
             wipe_memory(capsule_key)
+            wipe_memory(inner_key)
+            wipe_memory(outer_key)
 
         # Write capsule file
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -159,11 +167,17 @@ class RecoveryManager:
             raise RecoveryError(f"Failed to read capsule file: {exc}") from exc  # pragma: no cover
 
         capsule_key = self._crypto.derive_key(capsule_password, salt)
+        inner_key = self._crypto._hkdf_derive(
+            capsule_key, b"nyxora:capsule:inner"
+        )
+        outer_key = self._crypto._hkdf_derive(
+            capsule_key, b"nyxora:capsule:outer"
+        )
         try:
             # Decrypt outer blob → JSON payload
             try:
                 outer_ef = EncryptedField.from_bytes(outer_blob)
-                payload_bytes = self._crypto.decrypt_field(outer_ef, capsule_key)
+                payload_bytes = self._crypto.decrypt_field(outer_ef, outer_key)
             except Exception as exc:
                 raise RecoveryError(
                     "Capsule decryption failed — wrong password or corrupted file."
@@ -175,7 +189,7 @@ class RecoveryManager:
             try:
                 inner_blob = bytes.fromhex(payload["root_key_enc"])
                 inner_ef = EncryptedField.from_bytes(inner_blob)
-                root_key_bytes = self._crypto.decrypt_field(inner_ef, capsule_key)
+                root_key_bytes = self._crypto.decrypt_field(inner_ef, inner_key)
             except Exception as exc:  # pragma: no cover
                 raise RecoveryError("Failed to decrypt root key from capsule.") from exc  # pragma: no cover
 
@@ -183,6 +197,8 @@ class RecoveryManager:
 
         finally:
             wipe_memory(capsule_key)
+            wipe_memory(inner_key)
+            wipe_memory(outer_key)
 
     # ── Secret Splitting (Shamir-inspired GF(256)) ─────────────────────────
 
@@ -252,6 +268,18 @@ class RecoveryManager:
 
     # ── GF(256) arithmetic ─────────────────────────────────────────────────
 
+    # Precomputed multiplicative inverse table for GF(2^8).
+    # _GF256_INV[0] is undefined (zero has no inverse); set to 0 as sentinel.
+    _GF256_INV: list[int] = [0] * 256
+
+    @classmethod
+    def _build_gf256_inv_table(cls) -> None:
+        for a in range(1, 256):
+            for b in range(1, 256):
+                if cls._gf256_mul(a, b) == 1:
+                    cls._GF256_INV[a] = b
+                    break
+
     @staticmethod
     def _gf256_mul(a: int, b: int) -> int:
         """Multiply two elements in GF(2^8) with irreducible polynomial 0x11B."""
@@ -268,14 +296,9 @@ class RecoveryManager:
 
     @staticmethod
     def _gf256_inv(a: int) -> int:
-        """Multiplicative inverse in GF(2^8) via extended Euclidean algorithm."""
         if a == 0:
-            raise ValueError("Zero has no multiplicative inverse in GF(256).")  # pragma: no cover
-        # Brute-force for simplicity (256 elements)
-        for b in range(1, 256):
-            if RecoveryManager._gf256_mul(a, b) == 1:
-                return b
-        raise ValueError(f"No inverse found for {a} in GF(256).")  # pragma: no cover
+            raise ValueError("Zero has no multiplicative inverse in GF(256).")
+        return RecoveryManager._GF256_INV[a]
 
     @staticmethod
     def _gf256_poly_eval(coeffs: list[int], x: int) -> int:
@@ -301,3 +324,6 @@ class RecoveryManager:
                     den = cls._gf256_mul(den, xs[i] ^ xs[j])
             result ^= cls._gf256_mul(num, cls._gf256_inv(den))
         return result
+
+
+RecoveryManager._build_gf256_inv_table()

@@ -125,6 +125,20 @@ def test_locker_shred_direct(tmp_path):
     locker._shred_file(path)
     assert not path.exists()
 
+def test_backup_export_cancel(tmp_path):
+    from typer.testing import CliRunner
+    from nyxora.cli.commands.backup import app
+    runner = CliRunner()
+    out = tmp_path / "out.csv"
+    with patch("nyxora.cli.commands.backup.load_session") as ms, \
+         patch("nyxora.cli.commands.backup.danger_panel"), \
+         patch("questionary.confirm") as mc:
+        ms.return_value = ("sid", tmp_path / "v.nyx", bytearray(32))
+        mc.return_value.ask.return_value = False
+        result = runner.invoke(app, ["export", str(out), "--plaintext"])
+    assert result.exit_code == 0
+
+
 def test_helpers_direct(tmp_path):
     from unittest.mock import MagicMock
 

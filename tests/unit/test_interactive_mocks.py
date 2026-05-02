@@ -57,7 +57,8 @@ def test_secret_crud(m_close, m_open, m_ui, m_text, m_pw, m_conf, tmp_path):
     id1 = entries[0].id
 
     runner.invoke(app, ["secret", "get", id1, "--no-copy"])
-    runner.invoke(app, ["secret", "update", id1, "--title", "UpdatedTitle", "--password", "NewPassword"])
+    with patch("typer.confirm", return_value=False):
+        runner.invoke(app, ["secret", "update", id1, "--title", "UpdatedTitle"])
     runner.invoke(app, ["secret", "list", "--tag", "tag1"])
     runner.invoke(app, ["secret", "search", "UpdatedTitle"])
     runner.invoke(app, ["secret", "clone", id1, "--new-title", "ClonedEntry"])

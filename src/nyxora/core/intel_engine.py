@@ -20,6 +20,7 @@ from math import inf
 from pathlib import Path
 
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.utils.exceptions import NyxoraError
@@ -149,7 +150,6 @@ class IntelEngine:
                     f"HIBP API request failed: {exc}",  # pragma: no cover
                     user_message="Could not reach breach database. Check your internet connection.",  # pragma: no cover
                 ) from exc  # pragma: no cover
-                return True, int(count_str)  # pragma: no cover
   # pragma: no cover
         return False, 0  # pragma: no cover
 
@@ -194,7 +194,6 @@ class IntelEngine:
                 "No offline breach database loaded.",
                 user_message="Load an offline breach database first with import_offline_breach_db().",
             )
-        _, sha1 = self._crypto.hash_for_hibp(password)
         # We need the full hash — reconstruct from prefix (5 chars) + suffix
         prefix, suffix = self._crypto.hash_for_hibp(password)
         full_hash = prefix + suffix
@@ -370,6 +369,8 @@ class IntelEngine:
         for group in dup_groups:
             dup_ids.update(group)  # pragma: no cover
 
+        # Phase 1: entropy, patterns, duplicates (no network I/O)
+        audit_results: list[EntryAuditResult] = []
         for entry_id, title, password in entries:
             try:
                 entropy = self.score_entropy(password)
@@ -377,33 +378,20 @@ class IntelEngine:
                 patterns = self.scan_patterns(password)
                 pw_sha256 = hashlib.sha256(password.encode("utf-8")).hexdigest()
 
-                is_breached = False
-                breach_count = 0
-                if check_hibp:
-                    try:
-                        is_breached, breach_count = self.check_breach_hibp(password)
-                    except NyxoraError as e:  # pragma: no cover
-                        report.errors.append(f"{title}: {e.user_message}")  # pragma: no cover
-
                 result = EntryAuditResult(
                     entry_id=entry_id,
                     title=title,
                     entropy=entropy,
                     strength=strength,
                     patterns=patterns,
-                    is_breached=is_breached,
-                    breach_count=breach_count,
+                    is_breached=False,
+                    breach_count=0,
                     is_duplicate=(entry_id in dup_ids),
                     password_sha256=pw_sha256,
                 )
-                report.entries.append(result)
+                audit_results.append(result)
                 histogram[strength] = histogram.get(strength, 0) + 1
 
-                if is_breached:
-                    report.breached_count += 1
-                if entry_id in dup_ids:
-                    report.duplicate_count += 1  # pragma: no cover
-  # pragma: no cover
             except NyxoraError as exc:  # pragma: no cover
                 report.errors.append(f"{title}: {exc.user_message}")  # pragma: no cover
             except Exception:  # pragma: no cover
@@ -411,7 +399,31 @@ class IntelEngine:
                 tb = traceback.format_exc().splitlines()[-1]  # pragma: no cover
                 report.errors.append(f"{title}: unexpected error — {tb}")  # pragma: no cover
 
-        # Normalize duplicate count (each duplicate counted once)
+        # Phase 2: concurrent HIBP checks — all requests in flight simultaneously
+        if check_hibp:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                future_to_entry = {
+                    executor.submit(self.check_breach_hibp, password): (entry_id, title, password)
+                    for entry_id, title, password in entries
+                }
+                for future in as_completed(future_to_entry):
+                    entry_id, title, _ = future_to_entry[future]
+                    try:
+                        breached, count = future.result()
+                    except NyxoraError as e:  # pragma: no cover
+                        report.errors.append(f"{title}: {e.user_message}")  # pragma: no cover
+                        breached, count = False, 0  # pragma: no cover
+                    except Exception:
+                        breached, count = False, 0
+                    for r in audit_results:
+                        if r.entry_id == entry_id:
+                            r.is_breached = breached
+                            r.breach_count = count
+                            if breached:
+                                report.breached_count += 1
+                            break
+
+        report.entries = audit_results
         report.duplicate_count = sum(len(g) for g in dup_groups)
         report.strength_histogram = histogram
         return report

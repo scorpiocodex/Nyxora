@@ -108,6 +108,7 @@ class Config:
 
         self._apply_env_overrides()
         self._loaded = True
+        self.validate()
 
     def save(self) -> None:
         """Persist current configuration to disk."""

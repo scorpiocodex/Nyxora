@@ -1,8 +1,10 @@
 """Password and key generation commands."""
 from __future__ import annotations
 
+import math
 import secrets
 import string
+from importlib.resources import files
 from typing import Optional
 
 import typer
@@ -16,41 +18,10 @@ app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
 _engine = CryptoEngine(argon2_memory=65536, argon2_time=1, argon2_parallelism=1)
 _intel = IntelEngine(_engine)
 
-EFF_WORDLIST_SAMPLE = [
-    "correct", "horse", "battery", "staple", "umbrella", "laptop",
-    "coffee", "rainbow", "purple", "mountain", "river", "forest",
-    "castle", "dragon", "wizard", "pirate", "robot", "ninja",
-    "laser", "pixel", "galaxy", "nebula", "comet", "meteor",
-    "thunder", "lightning", "storm", "frost", "ember", "shadow",
-    "crystal", "diamond", "iron", "silver", "golden", "mystic",
-    "brave", "swift", "fierce", "calm", "wise", "bold",
-    "eagle", "falcon", "tiger", "panther", "cobra", "phoenix",
-    "ocean", "desert", "jungle", "tundra", "valley", "canyon",
-    "planet", "orbit", "rocket", "shuttle", "radar", "sonar",
-    "quantum", "cyber", "neural", "logic", "matrix", "vector",
-    "shield", "armor", "sword", "dagger", "hammer", "lance",
-    "copper", "bronze", "steel", "brass", "quartz", "ruby",
-    "sapphire", "emerald", "topaz", "jade", "pearl", "opal",
-    "silent", "echo", "whisper", "sound", "noise", "static",
-    "flame", "blaze", "spark", "ash", "smoke", "cinder",
-    "frozen", "chill", "ice", "snow", "glacier", "avalanche",
-    "wild", "tame", "feral", "domestic", "beast", "creature",
-    "alpha", "beta", "gamma", "delta", "epsilon", "omega",
-    "first", "last", "next", "prev", "soon", "late",
-    "quick", "slow", "fast", "rush", "dash", "sprint",
-    "giant", "tiny", "huge", "small", "grand", "micro",
-    "circle", "square", "triangle", "sphere", "cube", "pyramid",
-    "red", "blue", "green", "yellow", "orange", "violet",
-    "black", "white", "gray", "brown", "cyan", "magenta",
-    "north", "south", "east", "west", "up", "down",
-    "left", "right", "forward", "back", "in", "out",
-    "one", "two", "three", "four", "five", "six",
-    "seven", "eight", "nine", "ten", "zero", "hero",
-    "happy", "sad", "angry", "calm", "proud", "humble",
-    "light", "dark", "bright", "dim", "glow", "fade",
-    "sun", "moon", "star", "space", "void", "abyss",
-    "apple", "cherry", "grape", "lemon", "peach", "plum",
-]
+_wordlist_text = (
+    files("nyxora").joinpath("data/eff_large_wordlist.txt").read_text(encoding="utf-8")
+)
+EFF_LARGE_WORDLIST = _wordlist_text.strip().splitlines()
 
 
 @app.command()
@@ -88,12 +59,11 @@ def passphrase(
     copy_to_clipboard: bool = typer.Option(False, "--copy", "-c", help="Copy the generated passphrase to clipboard"),
 ) -> None:
     """Generate a diceware-style passphrase."""
-    selected = [secrets.choice(EFF_WORDLIST_SAMPLE) for _ in range(words)]
+    selected = [secrets.choice(EFF_LARGE_WORDLIST) for _ in range(words)]
     if capitalize:
         selected = [w.capitalize() for w in selected]  # pragma: no cover
     phrase = separator.join(selected)
-    import math
-    entropy = words * math.log2(len(EFF_WORDLIST_SAMPLE))
+    entropy = words * math.log2(len(EFF_LARGE_WORDLIST))
     strength = _intel.classify_strength(entropy)
     bar = entropy_bar(entropy)
     badge = strength_badge(strength)
@@ -205,7 +175,3 @@ def entropy(password: str = typer.Argument(..., help="Password to analyze")) -> 
         f"Patterns: {', '.join(patterns) or 'none detected'}",
         title="Password Analysis"
     )
-
-
-def strength_color(strength: str) -> str:  # pragma: no cover
-    return {"Weak": "#FF3131", "Fair": "#FFB000", "Strong": "#00FFFF", "Excellent": "#00FF41"}.get(strength, "#00FFFF")  # pragma: no cover

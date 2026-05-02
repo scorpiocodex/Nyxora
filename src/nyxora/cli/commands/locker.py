@@ -20,8 +20,8 @@ NYX_SUFFIX = ".nyx"
 _engine = CryptoEngine()
 
 
-def _get_locker_key(root_key: bytearray, filename: str) -> bytearray:
-    return _engine.derive_locker_key(root_key, filename)
+def _get_locker_key(root_key: bytearray, filename: str, file_salt: bytes) -> bytearray:
+    return _engine.derive_locker_key(root_key, filename, file_salt)
 
 
 @app.command()
@@ -44,15 +44,20 @@ def encrypt(
     out_path = output or file.with_suffix(file.suffix + NYX_SUFFIX)
 
     try:
-        locker_key = _get_locker_key(root_key, file.name)
+        file_salt = os.urandom(16)
+        locker_key = _get_locker_key(root_key, file.name, file_salt)
         try:
             data = file.read_bytes()
             # Store original filename in associated data
             ad = file.name.encode("utf-8")
             ef = _engine.encrypt_field(data, locker_key, associated_data=ad)
-            # Write: [4-byte filename length][filename bytes][encrypted blob]
+            # Write: [4-byte filename length][filename bytes][16-byte file_salt][encrypted blob]
             filename_bytes = file.name.encode("utf-8")
-            header = len(filename_bytes).to_bytes(4, "big") + filename_bytes
+            header = (
+                len(filename_bytes).to_bytes(4, "big")
+                + filename_bytes
+                + file_salt
+            )
 
             flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
             if hasattr(os, "O_NOINHERIT"):
@@ -88,12 +93,13 @@ def decrypt(
 
     try:
         raw = file.read_bytes()
-        # Parse header
+        # Parse header (v1.1.0+ format; files encrypted before v1.1.0 are not compatible)
         fname_len = int.from_bytes(raw[:4], "big")
         original_name = raw[4:4+fname_len].decode("utf-8")
-        blob = raw[4+fname_len:]
+        file_salt = raw[4+fname_len:4+fname_len+16]
+        blob = raw[4+fname_len+16:]
 
-        locker_key = _get_locker_key(root_key, original_name)
+        locker_key = _get_locker_key(root_key, original_name, file_salt)
         ad = original_name.encode("utf-8")
         ef = EncryptedField.from_bytes(blob)
         plaintext = _engine.decrypt_field(ef, locker_key, associated_data=ad)

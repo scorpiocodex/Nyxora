@@ -15,7 +15,6 @@ import hmac as hmac_module
 import os
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TYPE_CHECKING
 
 import nacl.bindings
 import nacl.exceptions
@@ -25,9 +24,6 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from nyxora.core.memory_guard import SecureString, wipe_memory
 from nyxora.utils.exceptions import CryptoError, DecryptionError, KeyDerivationError
-
-if TYPE_CHECKING:
-    pass
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -231,9 +227,15 @@ class CryptoEngine:
         info = f"nyxora:backup:{backup_id}".encode("utf-8")
         return self._hkdf_derive(root_key, info)
 
-    def derive_locker_key(self, root_key: bytearray, filename: str) -> bytearray:
-        """Derive a locker file encryption key via HKDF-SHA512."""
-        info = f"nyxora:locker:{filename}".encode("utf-8")
+    def derive_locker_key(
+        self, root_key: bytearray, filename: str, file_salt: bytes
+    ) -> bytearray:
+        """Derive a locker file encryption key via HKDF-SHA512.
+
+        file_salt is a per-file random value so the same filename always
+        produces a different key across encrypt operations.
+        """
+        info = f"nyxora:locker:{filename}:{file_salt.hex()}".encode("utf-8")
         return self._hkdf_derive(root_key, info)
 
     def _hkdf_derive(self, key_material: bytearray, info: bytes) -> bytearray:

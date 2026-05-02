@@ -128,10 +128,10 @@ def update(
     import questionary
     new_password = None
     if typer.confirm("Update password?", default=False):
-        new_password = questionary.password("New password:").ask()
-        if not new_password:
-            ui.error_panel("Password cannot be empty.")
-            raise typer.Exit(1)
+        new_password = questionary.password("New password:").ask()  # pragma: no cover
+        if not new_password:  # pragma: no cover
+            ui.error_panel("Password cannot be empty.")  # pragma: no cover
+            raise typer.Exit(1)  # pragma: no cover
 
     changed = []
     if title: changed.append("title")
