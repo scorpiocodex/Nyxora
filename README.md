@@ -4,9 +4,10 @@
 
 <p><b>Terminal-Native, Zero-Knowledge, Quantum-Resilient Password Intelligence Vault</b></p>
 
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-00FFFF?style=for-the-badge&logo=appveyor">
-  <img alt="Coverage" src="https://img.shields.io/badge/coverage-100%25-00FF41?style=for-the-badge&logo=pytest">
-  <img alt="Python" src="https://img.shields.io/badge/python-3.14-8B00FF?style=for-the-badge&logo=python">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.0.0-00FFFF?style=for-the-badge&logo=appveyor">
+  <img alt="Coverage" src="https://img.shields.io/badge/coverage-98%25-00FF41?style=for-the-badge&logo=pytest">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.12--3.14-8B00FF?style=for-the-badge&logo=python">
+  ![CI](https://github.com/scorpiocodex/Nyxora/actions/workflows/ci.yml/badge.svg)
 
 ```text
   ░███    ░██ ░██     ░██ ░██    ░██   ░██████   ░█████████  ░██████   ░███    
@@ -42,6 +43,12 @@ Includes built-in support for Shamir's Secret Sharing (split the master key into
 
 🌟 **Intel & Audit Engine**
 Provides deep pattern analysis and password strength auditing. Nyxora detects keyboard walks, repeated characters, common word bases, leet speak mappings, and password reuse across your entire local vault.
+
+🌟 **Import Intelligence**
+Bulk-import credentials from Bitwarden, 1Password, or any CSV export directly into the encrypted vault using `nyx vault import`. Supports auto-detection, dry-run preview, and format normalization.
+
+🌟 **Next-Generation Terminal UI**
+Visual entropy bars, live session dashboards, integrity checklists, and colour-coded audit summaries. Every interaction is information-dense and visually distinct.
 
 ## 🚀 Installation 
 
@@ -79,10 +86,16 @@ nyx vault init
 # 2. Unlock and start a secured memory DPAPI keychain session
 nyx vault unlock
 
-# 3. Add a secret with auto-generation parameters
+# 3. Generate a strong passphrase with visual entropy meter
+nyx generate passphrase --words 6 --count 3
+
+# 4. Import from Bitwarden export
+nyx vault import ~/bitwarden_export.json --format bitwarden
+
+# 5. Add a secret with auto-generation parameters
 nyx secret add --generate -t "GitHub" -u "cyber-ninja"
 
-# 4. Search and securely push the password to your clipboard
+# 6. Search and securely push the password to your clipboard
 nyx secret get "GitHub" --copy
 ```
 
@@ -98,17 +111,19 @@ Nyxora organizes its massive array of tools into clear, structured sub-modules. 
 * `nyx vault lock` : Securely halt background threads and terminate key mappings.
 * `nyx vault status` : View cryptographic limits, session timers, and configurations.
 * `nyx vault change-password` : Dynamically rotate the master derivation key sequence.
+* `nyx vault import` : Bulk-import entries from CSV, Bitwarden, or 1Password.
 * `nyx vault panic` : **Emergency Protocol**. Rapidly purge all RAM limits and shell bindings immediately.
 
 ### 🔒 Secrets Engine
-* `nyx secret add` : Inject a new database item with associated URIs, notes, and tags.
+* `nyx secret add` : Inject a new database item with associated URIs, notes, tags, and arbitrary `--custom` key=value fields.
 * `nyx secret get` : Securely retrieve existing entries and copy to local clipboards.
 * `nyx secret list` / `nyx secret search` : Iterate natively over large indexes safely visually.
-* `nyx secret update` / `nyx secret delete` : Easily manage and alter components.
+* `nyx secret update` : Manage and alter entry fields — supports `--tags` to replace tag sets and `--custom` field updates.
+* `nyx secret delete` : Remove entries with HMAC-verified soft deletion.
 
 ### ⚡ Generators & Tools
-* `nyx generate password` : Emit highly entropic true-random sequences.
-* `nyx generate passphrase` : Assemble multi-word combinations referencing robust EFF lists.
+* `nyx generate password` : Emit highly entropic true-random sequences. Use `--min-strength` (weak/fair/strong/excellent) to enforce a minimum entropy threshold — regenerates up to 10 times to meet the target.
+* `nyx generate passphrase` : Assemble multi-word combinations sampled from the full 7,776-word EFF large wordlist. Use `--count/-n` to generate multiple passphrases in one call.
 * `nyx generate ssh-key` : Deploy native RSA/ED25519 payload creation (optionally encrypted).
 
 ### 🛡️ Security & Intelligence
@@ -149,5 +164,5 @@ graph TD
 ---
 
 <div align="center">
-  <sub><b>Nyxora CLI</b> ◦ Developed by ScorpioCodeX ◦ Under MIT License</sub>
+  <sub><b>Nyxora v2.0.0</b> ◦ Developed by ScorpioCodeX ◦ Under MIT License</sub>
 </div>

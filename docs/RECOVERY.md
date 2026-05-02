@@ -39,6 +39,10 @@ Follow the prompts:
 
 ## 2. Recovery Capsule
 
+> **v2.0.0 note:** If upgrading from v1.x, recreate your recovery capsule
+> after upgrading. The cryptographic derivation changed — v1.x capsules
+> cannot be decrypted by v2.0.0.
+
 The recovery capsule stores your vault's root key, double-encrypted with a separate capsule password.
 
 ### Create a Capsule
@@ -64,17 +68,23 @@ nyx recovery restore-capsule ~/offline_storage/nyxora_recovery.capsule
 
 This decrypts the capsule and displays the recovered root key. You can then use it to initialize a new vault with the same key material.
 
-### Capsule File Format
+### Capsule File Format (v2.0.0)
 
 ```
 [4-byte magic: NYX\x01]
-[4-byte version]
-[32-byte random salt]
+[4-byte version (big-endian uint32)]
+[32-byte random Argon2id salt]
 [EncryptedField blob: outer encryption]
-  → decrypts to JSON:
-     { version, vault_id, root_key_enc (hex), created_at, hint }
-     root_key_enc decrypts (inner layer) to the 32-byte root key
+  → decrypts with outer_key (HKDF(capsule_key, "nyxora:capsule:outer"))
+  → yields JSON: { version, vault_id, root_key_enc (hex), created_at, hint }
+     root_key_enc decrypts with inner_key
+     (HKDF(capsule_key, "nyxora:capsule:inner"))
+     → yields the 32-byte root key
 ```
+
+**Key derivation change in v2.0.0:** Both encryption layers now use
+HKDF-derived keys with domain-separated info strings. Capsules created
+with v1.x are not compatible with v2.0.0. Recreate capsules after upgrading.
 
 ---
 
@@ -94,6 +104,8 @@ This creates `share_1_of_5.bin` through `share_5_of_5.bin`.
 **Distribute shares to trusted parties** or store them in separate locations. With threshold=3, any 3 of the 5 shares can reconstruct the root key.
 
 ### Reconstruction (Programmatic)
+
+The API is unchanged in v2.0.0 — `combine_shares()` works identically across all versions.
 
 ```python
 from nyxora.core.recovery_core import RecoveryManager
@@ -126,6 +138,7 @@ If you cannot unlock your vault:
 3. **Check TOTP** — is your authenticator app accessible?
 4. **Check the salt file** — the `.salt` file alongside the vault is required for KDF
 5. **Verify the vault file** — run `nyx backup verify <backup>` on a backup copy
+6. **Check version compatibility** — v2.0.0 capsules and v1.x capsules use different key derivation. Ensure your capsule matches your installed version.
 
 If all recovery options are exhausted, the vault data is **unrecoverable by design**.
 This is not a bug — it is the zero-knowledge guarantee.
