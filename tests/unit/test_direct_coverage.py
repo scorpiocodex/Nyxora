@@ -38,8 +38,9 @@ def test_backup_direct(tmp_path):
 
         # export plaintext
         store.list_entries.return_value = [MagicMock(title="T", password="P", tags=["tag1"], username="u", url="", notes="", custom=None, id="id")]
-        with patch("questionary.confirm") as m_conf:
+        with patch("questionary.confirm") as m_conf, patch("questionary.text") as m_text:
             m_conf.return_value.ask.return_value = True
+            m_text.return_value.ask.return_value = "CONFIRM"
             backup.export(tmp_path / "exp.csv", plaintext=True)
 
         # export encrypted

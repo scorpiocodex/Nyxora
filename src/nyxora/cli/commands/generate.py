@@ -8,6 +8,7 @@ from typing import Optional
 import typer
 
 from nyxora.cli import ui
+from nyxora.cli.ui import entropy_bar, strength_badge
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.intel_engine import IntelEngine
 
@@ -73,7 +74,10 @@ def password(
         pw = "".join(secrets.choice(alphabet) for _ in range(length))
         entropy = _intel.score_entropy(pw)
         strength = _intel.classify_strength(entropy)
-        ui.print_line(f"  [bold #00FFFF]{pw}[/bold #00FFFF]  [{strength_color(strength)}]{strength} ({entropy:.0f} bits)[/{strength_color(strength)}]")
+        bar = entropy_bar(entropy)
+        badge = strength_badge(strength)
+        ui.print_line(f"  [bold #00FFFF]{pw}[/bold #00FFFF]")
+        ui.print_line(f"  {bar}  {badge}  [#888780]{entropy:.0f} bits[/#888780]")
 
 
 @app.command()
@@ -91,7 +95,10 @@ def passphrase(
     import math
     entropy = words * math.log2(len(EFF_WORDLIST_SAMPLE))
     strength = _intel.classify_strength(entropy)
-    ui.print_line(f"  [bold #00FFFF]{phrase}[/bold #00FFFF]  [{strength_color(strength)}]{strength} ({entropy:.0f} bits)[/{strength_color(strength)}]")
+    bar = entropy_bar(entropy)
+    badge = strength_badge(strength)
+    ui.print_line(f"  [bold #00FFFF]{phrase}[/bold #00FFFF]")
+    ui.print_line(f"  {bar}  {badge}  [#888780]{entropy:.0f} bits[/#888780]")
 
     if copy_to_clipboard:
         import pyperclip  # pragma: no cover
@@ -190,10 +197,11 @@ def entropy(password: str = typer.Argument(..., help="Password to analyze")) -> 
     strength = _intel.classify_strength(score)
     patterns = _intel.scan_patterns(password)
 
+    bar = entropy_bar(score)
+    badge = strength_badge(strength)
     ui.info_panel(
-        f"Password: {'*' * len(password)}\n"
-        f"Entropy:  {score:.1f} bits\n"
-        f"Strength: {strength}\n"
+        f"Password: [#888780]{'*' * len(password)}[/#888780]\n"
+        f"Entropy:  {bar}  {badge}  {score:.1f} bits\n"
         f"Patterns: {', '.join(patterns) or 'none detected'}",
         title="Password Analysis"
     )

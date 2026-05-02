@@ -7,6 +7,7 @@ import typer
 
 from nyxora.cli import ui
 from nyxora.cli.helpers import open_vault
+from nyxora.cli.ui import clipboard_countdown, update_diff_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
 from nyxora.core.vault_store import VaultStore
@@ -107,6 +108,7 @@ def get(
                 import pyperclip  # pragma: no cover
                 pyperclip.copy(record.password)  # pragma: no cover
                 ui.success_panel("Password copied to clipboard.")  # pragma: no cover
+                clipboard_countdown(30)  # pragma: no cover
             except Exception:  # pragma: no cover
                 ui.warning_panel("Clipboard copy failed. Install pyperclip.")  # pragma: no cover
     finally:
@@ -119,16 +121,30 @@ def update(
     entry_id: str = typer.Argument(..., help="Entry ID"),
     title: Optional[str] = typer.Option(None, "--title", "-t"),
     username: Optional[str] = typer.Option(None, "--username", "-u"),
-    password: Optional[str] = typer.Option(None, "--password", "-p"),
     url: Optional[str] = typer.Option(None, "--url"),
     notes: Optional[str] = typer.Option(None, "--notes"),
 ) -> None:
     """Update fields on an existing entry."""
+    import questionary
+    new_password = None
+    if typer.confirm("Update password?", default=False):
+        new_password = questionary.password("New password:").ask()
+        if not new_password:
+            ui.error_panel("Password cannot be empty.")
+            raise typer.Exit(1)
+
+    changed = []
+    if title: changed.append("title")
+    if username: changed.append("username")
+    if new_password: changed.append("password")
+    if url: changed.append("url")
+    if notes: changed.append("notes")
+
     store, root_key = _open_vault()
     try:
         store.update_entry(entry_id, title=title, username=username,
-                           password=password, url=url, notes=notes)
-        ui.success_panel(f"Entry {entry_id[:8]}… updated.")
+                           password=new_password, url=url, notes=notes)
+        update_diff_panel(changed)
     finally:
         store.close()
         wipe_memory(root_key)

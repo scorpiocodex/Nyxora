@@ -7,6 +7,7 @@ import typer
 
 from nyxora.cli import ui
 from nyxora.cli.helpers import load_session
+from nyxora.cli.ui import recovery_status_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
 from nyxora.core.recovery_core import RecoveryManager
@@ -125,12 +126,27 @@ def split_secret(
 @app.command()
 def status() -> None:
     """Show recovery configuration status."""
-    session_data = load_session()
-    locked = session_data is None
-    ui.info_panel(
-        f"Vault locked: {locked}\n"
-        "TOTP: (check your authenticator app)\n"
-        "Capsule: (check for .capsule files)\n"
-        "Shamir shares: (check for share_*.bin files)",
-        title="Recovery Status"
-    )
+    totp_configured = False
+    try:
+        session_data = load_session()
+        if session_data is not None:
+            _, vault_path, root_key = session_data
+            try:
+                from nyxora.core.vault_store import VaultStore
+                store = VaultStore(_engine)
+                store.open(vault_path, root_key)
+                row = store._conn.execute(
+                    "SELECT value FROM metadata WHERE key='totp_secret'"
+                ).fetchone()
+                totp_configured = row is not None and bool(row["value"])
+                store.close()
+            finally:
+                wipe_memory(root_key)
+    except Exception:
+        totp_configured = False
+
+    nyxora_dir = Path.home() / ".nyxora"
+    capsule_files = [p.name for p in nyxora_dir.glob("*.capsule")] if nyxora_dir.exists() else []
+    share_files = [p.name for p in nyxora_dir.glob("share_*.bin")] if nyxora_dir.exists() else []
+
+    recovery_status_panel(totp_configured, capsule_files, share_files)

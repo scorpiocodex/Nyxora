@@ -15,9 +15,10 @@ from nyxora.cli.helpers import (
     load_session,
     save_session,
 )
+from nyxora.cli.ui import checklist_panel, session_dashboard
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import SecureString, generate_session_token, wipe_memory
-from nyxora.core.session_core import SessionManager
+from nyxora.core.session_core import DEFAULT_INACTIVITY_TIMEOUT, SessionManager
 from nyxora.core.vault_store import VaultStore
 from nyxora.utils.config import Config
 from nyxora.utils.exceptions import NyxoraError
@@ -58,6 +59,13 @@ def unlock(
             store = VaultStore(_engine)  # pragma: no cover
             store.initialize(vp, root_key)  # pragma: no cover
             store.close()  # pragma: no cover
+            salt_file = vp.with_suffix(".salt")  # pragma: no cover
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC  # pragma: no cover
+            if hasattr(os, "O_NOINHERIT"):  # pragma: no cover
+                flags |= getattr(os, "O_NOINHERIT")  # pragma: no cover
+            fd = os.open(str(salt_file), flags, 0o600)  # pragma: no cover
+            with os.fdopen(fd, "wb") as f:  # pragma: no cover
+                f.write(salt)  # pragma: no cover
             _session.unlock(root_key, session_token)  # pragma: no cover
             _session.record_successful_unlock()  # pragma: no cover
             save_session(session_token, str(vp), root_key.hex())  # pragma: no cover
@@ -231,7 +239,7 @@ def panic() -> None:
     """PANIC — immediately wipe session and exit."""
     clear_session()
     ui.error_panel("PANIC: Session destroyed. All key material wiped.", title="PANIC")
-    raise typer.Exit(3)
+    raise typer.Exit(4)
 
 
 @app.command()
@@ -247,9 +255,12 @@ def status() -> None:
         store.open(vault_path, root_key)
         count = store.entry_count()
         store.close()
-        ui.info_panel(
-            f"Vault is UNLOCKED\nPath: {vault_path}\nEntries: {count}\nSession: {session_id[:8]}…",
-            title="Vault Status"
+        session_dashboard(
+            session_id=session_id,
+            vault_path=str(vault_path),
+            entry_count=count,
+            failed_attempts=_session.get_failed_attempts(),
+            inactivity_timeout=DEFAULT_INACTIVITY_TIMEOUT,
         )
     finally:
         wipe_memory(root_key)
@@ -269,6 +280,18 @@ def health_check() -> None:
         with ui.spinner("Verifying vault integrity…"):
             report = store.verify_integrity()
         store.close()
-        ui.forensic_panel(report)
+        items = [
+            (report.schema_ok,       "Schema fingerprint"),
+            (report.vault_hmac_ok,   "Vault-wide HMAC chain"),
+            (len(report.entries_failed) == 0,
+             f"Entry integrity ({report.entries_checked} entries checked)"),
+            (report.audit_log_ok,    "Audit log integrity"),
+            (report.passed,          "Overall vault health"),
+        ]
+        subtitle = (
+            "" if report.passed
+            else f"Failed entries: {', '.join(report.entries_failed[:5])}"
+        )
+        checklist_panel("Vault Health Check", items, subtitle=subtitle)
     finally:
         wipe_memory(root_key)

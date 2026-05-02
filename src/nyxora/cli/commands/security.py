@@ -7,6 +7,7 @@ import typer
 
 from nyxora.cli import ui
 from nyxora.cli.helpers import open_vault
+from nyxora.cli.ui import audit_summary_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.intel_engine import IntelEngine
 from nyxora.core.memory_guard import wipe_memory
@@ -34,6 +35,15 @@ def audit(
         with ui.spinner("Auditing entries…"):
             report = _intel.audit_all(audit_data, check_hibp=not no_hibp)
         ui.audit_table(report)
+        weak_count = report.strength_histogram.get("Weak", 0)
+        fair_count = report.strength_histogram.get("Fair", 0)
+        audit_summary_panel(
+            total=report.total_entries,
+            breached=report.breached_count,
+            weak=weak_count,
+            fair=fair_count,
+            reused=report.duplicate_count,
+        )
     finally:
         store.close()
         wipe_memory(root_key)

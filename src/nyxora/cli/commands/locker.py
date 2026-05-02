@@ -45,26 +45,27 @@ def encrypt(
 
     try:
         locker_key = _get_locker_key(root_key, file.name)
-        data = file.read_bytes()
-        # Store original filename in associated data
-        ad = file.name.encode("utf-8")
-        ef = _engine.encrypt_field(data, locker_key, associated_data=ad)
-        # Write: [4-byte filename length][filename bytes][encrypted blob]
-        filename_bytes = file.name.encode("utf-8")
-        header = len(filename_bytes).to_bytes(4, "big") + filename_bytes
+        try:
+            data = file.read_bytes()
+            # Store original filename in associated data
+            ad = file.name.encode("utf-8")
+            ef = _engine.encrypt_field(data, locker_key, associated_data=ad)
+            # Write: [4-byte filename length][filename bytes][encrypted blob]
+            filename_bytes = file.name.encode("utf-8")
+            header = len(filename_bytes).to_bytes(4, "big") + filename_bytes
 
-        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        if hasattr(os, "O_NOINHERIT"):
-            flags |= getattr(os, "O_NOINHERIT")
-        fd = os.open(str(out_path), flags, 0o600)
-        with os.fdopen(fd, "wb") as f:
-            f.write(header + ef.to_bytes())
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            if hasattr(os, "O_NOINHERIT"):
+                flags |= getattr(os, "O_NOINHERIT")
+            fd = os.open(str(out_path), flags, 0o600)
+            with os.fdopen(fd, "wb") as f:
+                f.write(header + ef.to_bytes())
 
-        wipe_memory(locker_key)
-        ui.success_panel(f"Encrypted: {out_path}")
-
-        if delete_original:
-            _shred_file(file)  # pragma: no cover
+            ui.success_panel(f"Encrypted: {out_path}")
+            if delete_original:
+                _shred_file(file)  # pragma: no cover
+        finally:
+            wipe_memory(locker_key)
     finally:
         wipe_memory(root_key)
 

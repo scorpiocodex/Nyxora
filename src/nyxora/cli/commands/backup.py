@@ -9,6 +9,7 @@ import typer
 
 from nyxora.cli import ui
 from nyxora.cli.helpers import load_session, open_vault
+from nyxora.cli.ui import danger_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
 from nyxora.core.vault_store import VaultStore
@@ -184,10 +185,27 @@ def export(
 ) -> None:
     """Export vault entries to a file."""
     if plaintext:
+        danger_panel(
+            "You are about to export ALL vault passwords as plain text.\n"
+            "This file will NOT be encrypted. Anyone with access to it\n"
+            "can read every password immediately.\n\n"
+            "Store it only in a secure, encrypted location.",
+            title="⚠  PLAINTEXT EXPORT WARNING"
+        )
         import questionary
-        confirm = questionary.confirm("WARNING: This will export passwords in plaintext. Continue?").ask()
-        if not confirm:
-            return  # pragma: no cover
+        first = questionary.confirm(
+            "I understand this export will be unencrypted. Continue?",
+            default=False
+        ).ask()
+        if not first:
+            ui.info_panel("Export cancelled.")
+            raise typer.Exit(0)
+        confirm_word = questionary.text(
+            "Type CONFIRM to proceed:"
+        ).ask()
+        if confirm_word != "CONFIRM":
+            ui.info_panel("Export cancelled — confirmation word did not match.")
+            raise typer.Exit(0)
 
     store, root_key, _ = _open_vault()
     try:

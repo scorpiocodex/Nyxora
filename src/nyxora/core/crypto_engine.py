@@ -189,9 +189,10 @@ class CryptoEngine:
                 type=Type.ID,
             )
             result = bytearray(raw)
-            # Wipe the intermediate bytes
-            tmp = bytearray(raw)
-            wipe_memory(tmp)
+            # raw is a bytes object (immutable) — cannot be zeroed in CPython.
+            # Deleting the reference removes it from this frame's scope immediately,
+            # minimising the window before CPython's reference counting reclaims it.
+            del raw
             return result
         except ImportError as exc:  # pragma: no cover
             raise KeyDerivationError(  # pragma: no cover

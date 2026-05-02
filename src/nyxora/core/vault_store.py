@@ -654,7 +654,7 @@ class VaultStore:
                     u_enc = enc(rec.username)
                     url_enc = enc(rec.url)
                     n_enc = enc(rec.notes)
-                    tags_enc = enc(orjson.dumps(rec.tags)) if rec.tags else None
+                    tags_enc = enc(orjson.dumps(rec.tags)) if rec.tags is not None else None
                     cust_enc = enc(orjson.dumps(rec.custom)) if rec.custom else None
                 finally:
                     wipe_memory(entry_key)

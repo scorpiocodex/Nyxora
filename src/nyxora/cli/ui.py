@@ -260,3 +260,159 @@ def print_line(text: str = "") -> None:
 def print_kv(key: str, value: str) -> None:
     """Print a key-value pair in neon style."""
     console.print(f"  [nyx.label]{key}:[/nyx.label] {value}")
+
+
+# ── New display helpers ────────────────────────────────────────────────────────
+
+def entropy_bar(score: float, width: int = 20) -> str:
+    """Return a Rich markup block bar representing entropy level."""
+    filled = int((min(score, 128) / 128) * width)
+    if score < 30:
+        color = "#FF3131"
+    elif score < 50:
+        color = "#FFB000"
+    elif score < 70:
+        color = "#00FFFF"
+    else:
+        color = "#00FF41"
+    return f"[{color}]{'█' * filled}[/{color}][#444441]{'░' * (width - filled)}[/#444441]"
+
+
+def strength_badge(strength: str) -> str:
+    """Return a colored Rich markup label for a strength category."""
+    mapping = {
+        "Weak":      "[bold #FF3131]WEAK[/bold #FF3131]",
+        "Fair":      "[bold #FFB000]FAIR[/bold #FFB000]",
+        "Strong":    "[bold #00FFFF]STRONG[/bold #00FFFF]",
+        "Excellent": "[bold #00FF41]EXCELLENT[/bold #00FF41]",
+    }
+    return mapping.get(strength, "[bold #888780]UNKNOWN[/bold #888780]")
+
+
+def checklist_panel(title: str, items: list[tuple[bool, str]], subtitle: str = "") -> None:
+    """Print a Rich panel containing a vertical checklist of (passed, label) items."""
+    from rich.text import Text
+    text = Text()
+    for i, (passed, label) in enumerate(items):
+        if i:
+            text.append("\n")
+        if passed:
+            text.append("  ✓", style="bold #00FF41")
+        else:
+            text.append("  ✗", style="bold #FF3131")
+        text.append(f" {label}")
+    if subtitle:
+        text.append(f"\n\n{subtitle}", style="dim")
+    console.print(Panel(text, title=f"[nyx.title]{title}[/nyx.title]", border_style=ELEC_PURPLE))
+
+
+def danger_panel(message: str, title: str = "⚠  DANGER") -> None:
+    """Print a bold red danger warning panel."""
+    console.print(Panel(
+        f"[#FF3131]{message}[/#FF3131]",
+        title=f"[bold #FF3131]{title}[/bold #FF3131]",
+        border_style="#FF3131",
+        title_align="left",
+    ))
+
+
+def session_dashboard(
+    session_id: str,
+    vault_path: str,
+    entry_count: int,
+    failed_attempts: int,
+    inactivity_timeout: int,
+) -> None:
+    """Print a rich vault status panel as a borderless two-column table."""
+    table = Table(box=None, padding=(0, 2, 0, 0), show_header=False)
+    table.add_column("label", style="bold #888780", justify="right")
+    table.add_column("value", justify="left")
+
+    attempts_val = (
+        "[#00FF41]0 failed[/#00FF41]"
+        if failed_attempts == 0
+        else f"[#FFB000]{failed_attempts} failed[/#FFB000]"
+    )
+
+    table.add_row("STATUS",   "[bold #00FF41]  UNLOCKED[/bold #00FF41]")
+    table.add_row("PATH",     f"[{NEON_CYAN}]{vault_path}[/{NEON_CYAN}]")
+    table.add_row("ENTRIES",  f"[{NEON_CYAN}]{entry_count}[/{NEON_CYAN}]")
+    table.add_row("SESSION",  f"[#888780]{session_id[:8]}…[/#888780]")
+    table.add_row("TIMEOUT",  f"[#888780]{inactivity_timeout // 60}m inactivity limit[/#888780]")
+    table.add_row("ATTEMPTS", attempts_val)
+    table.add_row("CIPHER",   "[#888780]Argon2id · XChaCha20-Poly1305[/#888780]")
+
+    console.print(Panel(table, title="[nyx.title]Vault Status[/nyx.title]", border_style=ELEC_PURPLE))
+
+
+def audit_summary_panel(total: int, breached: int, weak: int, fair: int, reused: int) -> None:
+    """Print a one-line audit summary panel."""
+    line = f"[#888780]{total} entries scanned[/#888780]   "
+    line += (
+        f"[bold #FF3131]✗ {breached} BREACHED[/bold #FF3131]   "
+        if breached
+        else "[#00FF41]✓ 0 BREACHED[/#00FF41]   "
+    )
+    line += (
+        f"[#FF3131]{weak} WEAK[/#FF3131]   "
+        if weak
+        else "[#00FF41]0 WEAK[/#00FF41]   "
+    )
+    line += f"[#FFB000]{fair} FAIR[/#FFB000]   " if fair else ""
+    line += (
+        f"[#FFB000]⚑ {reused} REUSED[/#FFB000]"
+        if reused
+        else "[#00FF41]✓ 0 REUSED[/#00FF41]"
+    )
+    console.print(Panel(line, title="[nyx.title]Audit Summary[/nyx.title]", border_style=ELEC_PURPLE))
+
+
+def clipboard_countdown(seconds: int = 30) -> None:
+    """Launch a daemon thread that clears the clipboard after `seconds` seconds."""
+    import threading
+    import time
+    import pyperclip
+
+    def _clear() -> None:
+        time.sleep(seconds)
+        pyperclip.copy("")
+        console.print(f"[#888780]  Clipboard cleared after {seconds}s.[/#888780]")
+
+    threading.Thread(target=_clear, daemon=True).start()
+
+
+def update_diff_panel(changed_fields: list[str]) -> None:
+    """Print a panel listing updated fields, or an info panel if nothing changed."""
+    if not changed_fields:
+        info_panel("No fields were updated.")
+        return
+    content = "\n".join(f"  [#00FF41]✓[/#00FF41] {f}" for f in changed_fields)
+    console.print(Panel(content, title="[nyx.title]Entry Updated[/nyx.title]", border_style=MATRIX_GREEN))
+
+
+def recovery_status_panel(
+    totp_configured: bool,
+    capsule_files: list[str],
+    share_files: list[str],
+) -> None:
+    """Print a checklist panel summarising configured recovery pathways."""
+    capsule_label = (
+        f"Recovery capsule ({len(capsule_files)} file(s) found)"
+        if capsule_files
+        else "Recovery capsule (none found)"
+    )
+    shares_label = (
+        f"Shamir shares ({len(share_files)} file(s) found)"
+        if share_files
+        else "Shamir shares (none found)"
+    )
+    items: list[tuple[bool, str]] = [
+        (totp_configured, "TOTP two-factor authentication"),
+        (len(capsule_files) > 0, capsule_label),
+        (len(share_files) > 0, shares_label),
+    ]
+    checklist_panel(
+        "Recovery Status",
+        items,
+        subtitle="Run 'nyx recovery --help' to configure missing pathways.",
+    )
