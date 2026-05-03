@@ -163,3 +163,122 @@ def test_helpers_direct(tmp_path):
         mock_kr.get_password.return_value = None
         assert h.load_session() is None
         assert h.load_session() is None
+
+
+def test_import_parsers(tmp_path):
+    import csv as csv_mod
+    from nyxora.cli.commands.import_ import (
+        _parse_csv, _parse_nyxora_json, _parse_bitwarden,
+        _parse_1password, _detect_format,
+    )
+    import orjson
+
+    # CSV parser
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(
+        "title,username,password,url,notes\n"
+        "GitHub,alice,gh-token,https://github.com,work\n"
+        "Gmail,bob,gm-pass,,\n"
+    )
+    entries = _parse_csv(csv_file)
+    assert len(entries) == 2
+    assert entries[0]["title"] == "GitHub"
+    assert entries[0]["password"] == "gh-token"
+    assert entries[1]["title"] == "Gmail"
+
+    # _detect_format — CSV by extension
+    assert _detect_format(csv_file) == "csv"
+
+    # _detect_format — JSON by extension
+    json_file = tmp_path / "export.json"
+    json_file.write_bytes(orjson.dumps([{"title": "t", "password": "p"}]))
+    assert _detect_format(json_file) == "json"
+
+    # _detect_format — Bitwarden by content
+    bw_file = tmp_path / "bw.json"
+    bw_file.write_bytes(orjson.dumps({
+        "items": [], "folders": []
+    }))
+    assert _detect_format(bw_file) == "bitwarden"
+
+    # Nyxora JSON parser — list format
+    entries2 = _parse_nyxora_json(json_file)
+    assert len(entries2) == 1
+    assert entries2[0]["title"] == "t"
+
+    # Nyxora JSON parser — dict with "entries" key
+    json_file2 = tmp_path / "export2.json"
+    json_file2.write_bytes(orjson.dumps(
+        {"entries": [{"title": "X", "password": "y"}]}
+    ))
+    entries3 = _parse_nyxora_json(json_file2)
+    assert len(entries3) == 1
+
+    # Bitwarden parser
+    bw_data_file = tmp_path / "bw_data.json"
+    bw_data_file.write_bytes(orjson.dumps({
+        "items": [
+            {
+                "type": 1,
+                "name": "BW Entry",
+                "login": {
+                    "username": "bwuser",
+                    "password": "bwpass",
+                    "uris": [{"uri": "https://example.com"}]
+                },
+                "notes": "bw note",
+                "folderId": None,
+            },
+            {"type": 2, "name": "Card", "notes": ""},  # non-login, skipped
+        ],
+        "folders": []
+    }))
+    bw_entries = _parse_bitwarden(bw_data_file)
+    assert len(bw_entries) == 1
+    assert bw_entries[0]["title"] == "BW Entry"
+    assert bw_entries[0]["username"] == "bwuser"
+
+    # 1Password parser (delegates to CSV)
+    assert _parse_1password(csv_file) == _parse_csv(csv_file)
+
+
+def test_generate_min_strength(tmp_path):
+    from typer.testing import CliRunner
+    from nyxora.cli.commands.generate import app
+    runner = CliRunner()
+    # --min-strength with a short low-entropy alphabet should trigger the
+    # warning panel after 10 attempts
+    result = runner.invoke(app, [
+        "password", "--length", "4", "--no-symbols",
+        "--no-digits", "--no-upper", "--min-strength", "excellent"
+    ])
+    # Should either meet the threshold or print the warning — either way
+    # the command must not crash
+    assert result.exit_code == 0
+
+
+def test_secret_custom_and_tags():
+    from unittest.mock import patch, MagicMock
+    from typer.testing import CliRunner
+    from nyxora.cli.commands.secret import app
+
+    runner = CliRunner()
+    mock_store = MagicMock()
+    mock_store.add_entry.return_value = "test-id-1234"
+
+    with patch("nyxora.cli.commands.secret.open_vault") as mv, \
+         patch("nyxora.cli.commands.secret.wipe_memory"), \
+         patch("questionary.text") as qt, \
+         patch("questionary.password") as qp, \
+         patch("questionary.confirm") as qc:
+        mv.return_value = (mock_store, "sid", bytearray(32), None)
+        qt.return_value.ask.return_value = "My Entry"
+        qp.return_value.ask.return_value = "mypassword"
+        qc.return_value.ask.return_value = False  # no questionary confirm
+
+        result = runner.invoke(app, [
+            "add", "--title", "TestEntry", "--custom", "pin=1234,token=abc"
+        ])
+        assert result.exit_code == 0
+        call_kwargs = mock_store.add_entry.call_args[1]
+        assert call_kwargs.get("custom") == {"pin": "1234", "token": "abc"}
