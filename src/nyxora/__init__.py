@@ -1,5 +1,5 @@
 """NYXORA — Terminal-native, offline, zero-knowledge, quantum-resilient password vault."""
 
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 __author__ = "NYXORA"
 __license__ = "MIT"
