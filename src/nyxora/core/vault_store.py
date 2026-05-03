@@ -144,6 +144,8 @@ class VaultStore:
         self._root_key: bytearray | None = None
         self._hmac_key: bytearray | None = None
         self._path: Path | None = None
+        self._cache: dict[str, EntryRecord] | None = None
+        self._cache_complete: bool = False
 
     def __enter__(self) -> VaultStore:
         return self
@@ -213,6 +215,9 @@ class VaultStore:
         # Verify vault-wide HMAC
         self._verify_vault_hmac(conn)
 
+        self._cache = {}
+        self._cache_complete = False
+
     def close(self) -> None:
         """Checkpoint WAL, close connection, wipe keys from memory."""
         if self._conn is not None:
@@ -231,6 +236,9 @@ class VaultStore:
         if self._hmac_key is not None:
             wipe_memory(self._hmac_key)
             self._hmac_key = None
+
+        self._cache = None
+        self._cache_complete = False
 
     def _connect(self, path: Path) -> sqlite3.Connection:
         conn = sqlite3.connect(str(path), check_same_thread=False)
@@ -421,6 +429,21 @@ class VaultStore:
 
             self._update_vault_hmac(conn)
             self._append_audit(conn, "ADD", entry_id, session_id)
+            if self._cache is not None:
+                self._cache[entry_id] = EntryRecord(
+                    id=entry_id,
+                    title=title,
+                    password=password,
+                    username=username,
+                    url=url,
+                    notes=notes,
+                    tags=tags or [],
+                    custom=custom or {},
+                    created_at=now,
+                    updated_at=now,
+                    accessed_at=None,
+                    is_deleted=False,
+                )
         finally:
             wipe_memory(entry_key)
 
@@ -429,6 +452,9 @@ class VaultStore:
     def get_entry(self, entry_id: str, session_id: str | None = None) -> EntryRecord:
         """Decrypt and return an entry. Verifies per-entry HMAC first."""
         conn, root_key, hmac_key = self._require_open()
+
+        if self._cache is not None and entry_id in self._cache:
+            return self._cache[entry_id]
 
         row = conn.execute(
             "SELECT * FROM entries WHERE id=? AND is_deleted=0", (entry_id,)
@@ -440,6 +466,9 @@ class VaultStore:
         self._verify_entry_hmac(row, hmac_key)
 
         record = self._decrypt_row(row, root_key)
+
+        if self._cache is not None:
+            self._cache[record.id] = record
 
         # Update accessed_at
         now = int(time.time())
@@ -546,6 +575,9 @@ class VaultStore:
 
             self._update_vault_hmac(conn)
             self._append_audit(conn, "UPDATE", entry_id, session_id)
+            if self._cache is not None:
+                self._cache.pop(entry_id, None)
+                self._cache_complete = False
         finally:
             wipe_memory(entry_key)
 
@@ -568,10 +600,26 @@ class VaultStore:
 
         self._update_vault_hmac(conn)
         self._append_audit(conn, "DELETE", entry_id, session_id)
+        if self._cache is not None:
+            self._cache.pop(entry_id, None)
 
     def list_entries(self, include_deleted: bool = False) -> list[EntryRecord]:
         """Return all (or all non-deleted) entries, decrypted."""
         conn, root_key, hmac_key = self._require_open()
+
+        if not include_deleted and self._cache is not None:
+            if self._cache_complete:
+                return list(self._cache.values())
+            # cold cache — populate from DB, merge with any already-cached entries
+            rows = conn.execute(
+                "SELECT * FROM entries WHERE is_deleted=0 ORDER BY created_at"
+            ).fetchall()
+            for row in rows:
+                self._verify_entry_hmac(row, hmac_key)
+                record = self._decrypt_row(row, root_key)
+                self._cache[record.id] = record
+            self._cache_complete = True
+            return list(self._cache.values())
 
         if include_deleted:
             rows = conn.execute("SELECT * FROM entries ORDER BY created_at").fetchall()
@@ -842,6 +890,19 @@ class VaultStore:
             "SELECT value FROM metadata WHERE key='vault_id'"
         ).fetchone()
         return row["value"] if row else ""
+
+    def get_metadata_value(self, key: str) -> str | None:
+        """Return a metadata value by key, or None if not found."""
+        conn, _, _ = self._require_open()
+        row = conn.execute(
+            "SELECT value FROM metadata WHERE key = ?", (key,)
+        ).fetchone()
+        if row is None:
+            return None
+        val = row["value"]
+        if isinstance(val, (bytes, bytearray)):
+            return val.decode("utf-8")
+        return str(val) if val is not None else None
 
     def entry_count(self) -> int:
         """Count of non-deleted entries."""

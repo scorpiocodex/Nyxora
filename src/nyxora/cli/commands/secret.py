@@ -28,6 +28,11 @@ def add(
     url: Optional[str] = typer.Option(None, "--url"),
     tags: Optional[str] = typer.Option(None, "--tags", help="Comma-separated tags"),
     generate: bool = typer.Option(False, "--generate", "-g", help="Auto-generate password"),
+    custom: Optional[str] = typer.Option(
+        None, "--custom", "-x",
+        help="Custom fields as key=value pairs, comma-separated. "
+             "Example: --custom 'pin=1234,recovery=abc'"
+    ),
 ) -> None:
     """Add a new secret entry to the vault."""
     import questionary
@@ -54,9 +59,19 @@ def add(
     notes = questionary.text("Notes (optional):").ask() or None
     tags_list = [tag.strip() for tag in tags.split(",")] if tags else []
 
+    custom_dict: dict[str, str] = {}
+    if custom:
+        for pair in custom.split(","):
+            if "=" in pair:
+                k, _, v = pair.partition("=")
+                custom_dict[k.strip()] = v.strip()
+
     store, root_key = _open_vault()
     try:
-        eid = store.add_entry(t, password, username=u, url=url_val, notes=notes, tags=tags_list)
+        eid = store.add_entry(
+            t, password, username=u, url=url_val, notes=notes,
+            tags=tags_list, custom=custom_dict,
+        )
         ui.success_panel(f"Entry added: {t}\nID: {eid}")
     finally:
         store.close()
@@ -123,6 +138,9 @@ def update(
     username: Optional[str] = typer.Option(None, "--username", "-u"),
     url: Optional[str] = typer.Option(None, "--url"),
     notes: Optional[str] = typer.Option(None, "--notes"),
+    tags: Optional[str] = typer.Option(
+        None, "--tags", help="Comma-separated tags (replaces existing)"
+    ),
 ) -> None:
     """Update fields on an existing entry."""
     import questionary
@@ -133,17 +151,32 @@ def update(
             ui.error_panel("Password cannot be empty.")  # pragma: no cover
             raise typer.Exit(1)  # pragma: no cover
 
+    tags_list: list[str] | None = None
+    if tags is not None:
+        tags_list = [t.strip() for t in tags.split(",") if t.strip()]
+        changed_tags = True
+    else:
+        changed_tags = False
+
     changed = []
     if title: changed.append("title")
     if username: changed.append("username")
     if new_password: changed.append("password")
     if url: changed.append("url")
     if notes: changed.append("notes")
+    if changed_tags: changed.append("tags")
 
     store, root_key = _open_vault()
     try:
-        store.update_entry(entry_id, title=title, username=username,
-                           password=new_password, url=url, notes=notes)
+        store.update_entry(
+            entry_id,
+            title=title,
+            username=username,
+            password=new_password,
+            url=url,
+            notes=notes,
+            tags=tags_list,
+        )
         update_diff_panel(changed)
     finally:
         store.close()

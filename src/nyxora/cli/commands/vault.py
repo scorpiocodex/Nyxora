@@ -295,3 +295,7 @@ def health_check() -> None:
         checklist_panel("Vault Health Check", items, subtitle=subtitle)
     finally:
         wipe_memory(root_key)
+
+
+from nyxora.cli.commands.import_ import import_entries  # noqa: E402
+app.command("import")(import_entries)

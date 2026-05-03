@@ -6,7 +6,7 @@ from pathlib import Path
 import typer
 
 from nyxora.cli import ui
-from nyxora.cli.helpers import load_session
+from nyxora.cli.helpers import load_session, open_vault
 from nyxora.cli.ui import recovery_status_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
@@ -128,20 +128,13 @@ def status() -> None:
     """Show recovery configuration status."""
     totp_configured = False
     try:
-        session_data = load_session()
-        if session_data is not None:
-            _, vault_path, root_key = session_data
-            try:
-                from nyxora.core.vault_store import VaultStore
-                store = VaultStore(_engine)
-                store.open(vault_path, root_key)
-                row = store._conn.execute(
-                    "SELECT value FROM metadata WHERE key='totp_secret'"
-                ).fetchone()
-                totp_configured = row is not None and bool(row["value"])
-                store.close()
-            finally:
-                wipe_memory(root_key)
+        store, _, root_key, _ = open_vault(_engine)
+        try:
+            val = store.get_metadata_value("totp_secret")
+            totp_configured = bool(val)
+        finally:
+            store.close()
+            wipe_memory(root_key)
     except Exception:
         totp_configured = False
 

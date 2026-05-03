@@ -23,6 +23,8 @@ _wordlist_text = (
 )
 EFF_LARGE_WORDLIST = _wordlist_text.strip().splitlines()
 
+STRENGTH_ORDER = {"weak": 0, "fair": 1, "strong": 2, "excellent": 3}
+
 
 @app.command()
 def password(
@@ -31,6 +33,10 @@ def password(
     no_symbols: bool = typer.Option(False, "--no-symbols", help="Exclude symbols"),
     no_digits: bool = typer.Option(False, "--no-digits", help="Exclude digits"),
     no_upper: bool = typer.Option(False, "--no-upper", help="Exclude uppercase"),
+    min_strength: Optional[str] = typer.Option(
+        None, "--min-strength",
+        help="Minimum strength: weak, fair, strong, excellent"
+    ),
 ) -> None:
     """Generate a cryptographically secure random password."""
     alphabet = string.ascii_lowercase
@@ -42,9 +48,23 @@ def password(
         alphabet += "!@#$%^&*()-_=+[]{}|;:,.<>?"
 
     for _ in range(count):
-        pw = "".join(secrets.choice(alphabet) for _ in range(length))
-        entropy = _intel.score_entropy(pw)
-        strength = _intel.classify_strength(entropy)
+        if min_strength is not None:
+            required = STRENGTH_ORDER.get(min_strength.lower(), 0)
+            for attempt in range(10):
+                pw = "".join(secrets.choice(alphabet) for _ in range(length))
+                entropy = _intel.score_entropy(pw)
+                strength = _intel.classify_strength(entropy)
+                if STRENGTH_ORDER.get(strength.lower(), 0) >= required:
+                    break
+            else:
+                ui.warning_panel(
+                    f"Could not meet --min-strength '{min_strength}' "
+                    f"in 10 attempts. Showing best result."
+                )
+        else:
+            pw = "".join(secrets.choice(alphabet) for _ in range(length))
+            entropy = _intel.score_entropy(pw)
+            strength = _intel.classify_strength(entropy)
         bar = entropy_bar(entropy)
         badge = strength_badge(strength)
         ui.print_line(f"  [bold #00FFFF]{pw}[/bold #00FFFF]")
@@ -57,18 +77,20 @@ def passphrase(
     separator: str = typer.Option("-", "--separator", "-s", help="Word separator"),
     capitalize: bool = typer.Option(False, "--capitalize", help="Capitalize first letter of each word"),
     copy_to_clipboard: bool = typer.Option(False, "--copy", "-c", help="Copy the generated passphrase to clipboard"),
+    count: int = typer.Option(1, "--count", "-n", help="Number of passphrases to generate"),
 ) -> None:
     """Generate a diceware-style passphrase."""
-    selected = [secrets.choice(EFF_LARGE_WORDLIST) for _ in range(words)]
-    if capitalize:
-        selected = [w.capitalize() for w in selected]  # pragma: no cover
-    phrase = separator.join(selected)
-    entropy = words * math.log2(len(EFF_LARGE_WORDLIST))
-    strength = _intel.classify_strength(entropy)
-    bar = entropy_bar(entropy)
-    badge = strength_badge(strength)
-    ui.print_line(f"  [bold #00FFFF]{phrase}[/bold #00FFFF]")
-    ui.print_line(f"  {bar}  {badge}  [#888780]{entropy:.0f} bits[/#888780]")
+    for _ in range(count):
+        selected = [secrets.choice(EFF_LARGE_WORDLIST) for _ in range(words)]
+        if capitalize:
+            selected = [w.capitalize() for w in selected]  # pragma: no cover
+        phrase = separator.join(selected)
+        entropy = words * math.log2(len(EFF_LARGE_WORDLIST))
+        strength = _intel.classify_strength(entropy)
+        bar = entropy_bar(entropy)
+        badge = strength_badge(strength)
+        ui.print_line(f"  [bold #00FFFF]{phrase}[/bold #00FFFF]")
+        ui.print_line(f"  {bar}  {badge}  [#888780]{entropy:.0f} bits[/#888780]")
 
     if copy_to_clipboard:
         import pyperclip  # pragma: no cover
