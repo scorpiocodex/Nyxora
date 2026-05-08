@@ -15,7 +15,7 @@ from nyxora.cli.helpers import (
     load_session,
     save_session,
 )
-from nyxora.cli.ui import checklist_panel, session_dashboard
+from nyxora.cli.ui import checklist_panel, is_json_mode, json_out, session_dashboard
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import SecureString, generate_session_token, wipe_memory
 from nyxora.core.session_core import DEFAULT_INACTIVITY_TIMEOUT, SessionManager
@@ -255,6 +255,14 @@ def status() -> None:
         store.open(vault_path, root_key)
         count = store.entry_count()
         store.close()
+        if is_json_mode():
+            json_out({
+                "locked": False,
+                "vault_path": str(vault_path),
+                "entry_count": count,
+                "session_id": session_id[:8],
+            })
+            return
         session_dashboard(
             session_id=session_id,
             vault_path=str(vault_path),
@@ -295,6 +303,132 @@ def health_check() -> None:
         checklist_panel("Vault Health Check", items, subtitle=subtitle)
     finally:
         wipe_memory(root_key)
+
+
+@app.command("profiles")
+def list_profiles() -> None:
+    """List all vault profiles."""
+    from nyxora.cli.helpers import load_profiles
+    from rich.table import Table
+    from nyxora.cli.ui import ELEC_PURPLE, NEON_CYAN, console
+
+    data = load_profiles()
+    profiles = data.get("profiles", {})
+    active = data.get("active")
+
+    if not profiles:
+        ui.info_panel(
+            "No profiles configured.\n"
+            "Use [bold]nyx vault add-profile <name> --path <vault.nyx>[/bold] "
+            "to create one.",
+            title="Vault Profiles"
+        )
+        return
+
+    table = Table(
+        title="[nyx.title]Vault Profiles[/nyx.title]",
+        border_style=ELEC_PURPLE,
+        header_style=f"bold {NEON_CYAN}",
+    )
+    table.add_column("Active")
+    table.add_column("Name")
+    table.add_column("Vault Path")
+    table.add_column("Description")
+
+    for name, info in sorted(profiles.items()):
+        marker = "[bold #00FF41]●[/bold #00FF41]" if name == active else " "
+        table.add_row(
+            marker,
+            f"[bold]{name}[/bold]" if name == active else name,
+            info.get("vault_path", ""),
+            info.get("description", ""),
+        )
+    console.print(table)
+
+
+@app.command("use")
+def use_profile(
+    name: str = typer.Argument(..., help="Profile name to activate"),
+) -> None:
+    """Switch to a named vault profile."""
+    from nyxora.cli.helpers import set_active_profile
+    try:
+        set_active_profile(name)
+        ui.success_panel(
+            f"Active profile set to [bold]{name}[/bold].",
+            title="Profile Switched"
+        )
+    except ValueError as e:
+        ui.error_panel(str(e))
+        raise typer.Exit(1)
+
+
+@app.command("add-profile")
+def add_profile(
+    name: str = typer.Argument(..., help="Profile name"),
+    path: Path = typer.Option(..., "--path", "-p",
+                              help="Path to vault .nyx file"),
+    description: str = typer.Option("", "--description", "-d",
+                                    help="Optional description"),
+    activate: bool = typer.Option(False, "--activate",
+                                  help="Set as active profile immediately"),
+) -> None:
+    """Register a new vault profile."""
+    from nyxora.cli.helpers import load_profiles, save_profiles
+
+    data = load_profiles()
+    data.setdefault("profiles", {})[name] = {
+        "vault_path": str(path),
+        "description": description,
+    }
+    if data.get("active") is None:
+        data["active"] = name  # first profile auto-activates
+    save_profiles(data)
+
+    if activate:
+        data["active"] = name
+        save_profiles(data)
+
+    ui.success_panel(
+        f"Profile [bold]{name}[/bold] registered.\n"
+        f"Vault path: {path}",
+        title="Profile Added"
+    )
+
+
+@app.command("remove-profile")
+def remove_profile(
+    name: str = typer.Argument(..., help="Profile name to remove"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
+) -> None:
+    """Remove a vault profile (does not delete the vault file)."""
+    from nyxora.cli.helpers import load_profiles, save_profiles
+    import questionary
+
+    data = load_profiles()
+    if name not in data.get("profiles", {}):
+        ui.error_panel(f"Profile '{name}' not found.")
+        raise typer.Exit(1)
+
+    if not yes:
+        ok = questionary.confirm(
+            f"Remove profile '{name}'? (vault file is NOT deleted)"
+        ).ask()
+        if not ok:
+            ui.info_panel("Cancelled.")
+            return
+
+    del data["profiles"][name]
+    if data.get("active") == name:
+        # Auto-select another profile if one exists
+        remaining = list(data["profiles"].keys())
+        data["active"] = remaining[0] if remaining else None
+    save_profiles(data)
+
+    ui.success_panel(
+        f"Profile [bold]{name}[/bold] removed.",
+        title="Profile Removed"
+    )
 
 
 from nyxora.cli.commands.import_ import import_entries  # noqa: E402

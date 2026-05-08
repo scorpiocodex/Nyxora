@@ -10,7 +10,7 @@ from typing import Optional
 import typer
 
 from nyxora.cli import ui
-from nyxora.cli.ui import entropy_bar, strength_badge
+from nyxora.cli.ui import entropy_bar, is_json_mode, json_out, strength_badge
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.intel_engine import IntelEngine
 
@@ -67,6 +67,10 @@ def password(
             strength = _intel.classify_strength(entropy)
         bar = entropy_bar(entropy)
         badge = strength_badge(strength)
+        if is_json_mode():
+            json_out({"password": pw, "entropy_bits": round(entropy, 1),
+                      "strength": strength})
+            continue
         ui.print_line(f"  [bold #00FFFF]{pw}[/bold #00FFFF]")
         ui.print_line(f"  {bar}  {badge}  [#888780]{entropy:.0f} bits[/#888780]")
 
@@ -89,6 +93,10 @@ def passphrase(
         strength = _intel.classify_strength(entropy)
         bar = entropy_bar(entropy)
         badge = strength_badge(strength)
+        if is_json_mode():
+            json_out({"passphrase": phrase, "entropy_bits": round(entropy, 1),
+                      "strength": strength, "word_count": words})
+            continue
         ui.print_line(f"  [bold #00FFFF]{phrase}[/bold #00FFFF]")
         ui.print_line(f"  {bar}  {badge}  [#888780]{entropy:.0f} bits[/#888780]")
 

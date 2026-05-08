@@ -7,7 +7,7 @@ import typer
 
 from nyxora.cli import ui
 from nyxora.cli.helpers import open_vault
-from nyxora.cli.ui import clipboard_countdown, update_diff_panel
+from nyxora.cli.ui import clipboard_countdown, is_json_mode, json_out, update_diff_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
 from nyxora.core.vault_store import VaultStore
@@ -92,6 +92,13 @@ def list_entries(
         if not entries:
             ui.info_panel("No entries found.")  # pragma: no cover
         else:
+            if is_json_mode():
+                json_out([{
+                    "id": e.id, "title": e.title,
+                    "username": e.username, "url": e.url,
+                    "tags": e.tags, "updated_at": e.updated_at,
+                } for e in entries])
+                return
             ui.table_entries(entries, show_passwords=show_passwords)
     finally:
         store.close()
@@ -107,6 +114,20 @@ def get(
     store, root_key = _open_vault()
     try:
         record = store.get_entry(entry_id)
+        if is_json_mode():
+            json_out({
+                "id": record.id,
+                "title": record.title,
+                "username": record.username,
+                "password": record.password,
+                "url": record.url,
+                "notes": record.notes,
+                "tags": record.tags,
+                "custom": record.custom,
+                "created_at": record.created_at,
+                "updated_at": record.updated_at,
+            })
+            return
         ui.print_kv("ID", record.id)
         ui.print_kv("Title", record.title)
         if record.username:
@@ -214,6 +235,13 @@ def search(query: str = typer.Argument(..., help="Search query")) -> None:
         if not results:
             ui.info_panel(f"No entries found matching '{query}'.")  # pragma: no cover
         else:
+            if is_json_mode():
+                json_out([{
+                    "id": e.id, "title": e.title,
+                    "username": e.username, "url": e.url,
+                    "tags": e.tags,
+                } for e in results])
+                return
             ui.table_entries(results)
     finally:
         store.close()

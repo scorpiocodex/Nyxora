@@ -36,6 +36,25 @@ NYX_THEME = Theme({
 
 console = Console(theme=NYX_THEME, highlight=False)
 
+# ── JSON output mode ──────────────────────────────────────────────────
+_json_mode: bool = False
+
+def set_json_mode(enabled: bool) -> None:
+    """Enable or disable JSON output mode globally."""
+    global _json_mode
+    _json_mode = enabled
+
+def is_json_mode() -> bool:
+    """Return True if JSON output mode is active."""
+    return _json_mode
+
+def json_out(data: Any) -> None:
+    """Print data as compact JSON to stdout. Used when --json is active."""
+    import json as _json
+    import sys
+    sys.stdout.write(_json.dumps(data, default=str, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
+
 # ── ASCII Banner ───────────────────────────────────────────────────────────────
 
 _BANNER = r"""

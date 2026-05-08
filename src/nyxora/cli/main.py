@@ -73,8 +73,16 @@ def main_callback(
         is_eager=True,
         help="Show version and exit.",
     ),
+    json_output: bool = typer.Option(
+        False, "--json",
+        help="Output results as JSON (for scripting).",
+        is_eager=False,
+    ),
 ) -> None:
     """NYXORA — Terminal-native password intelligence vault."""
+    if json_output:
+        from nyxora.cli.ui import set_json_mode
+        set_json_mode(True)
 
 
 # ── Global exception handler ───────────────────────────────────────────────────

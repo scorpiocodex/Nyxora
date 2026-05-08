@@ -17,9 +17,18 @@ SERVICE_NAME = "nyxora_vault_session"
 
 
 SESSION_FILE = Path.home() / ".nyxora" / "session.json"
+PROFILES_FILE = Path.home() / ".nyxora" / "profiles.json"
 
 
 def get_vault_path(config: Config) -> Path:
+    # Check active profile first
+    data = load_profiles()
+    active = data.get("active")
+    if active and active in data.get("profiles", {}):
+        profile_path = data["profiles"][active].get("vault_path")
+        if profile_path:
+            return Path(profile_path)
+    # Fall back to config
     vp = config.get("vault.default_path")
     if vp:
         return Path(vp)
@@ -86,6 +95,43 @@ def clear_session() -> None:
         except Exception:  # pragma: no cover
             pass  # pragma: no cover
         SESSION_FILE.unlink(missing_ok=True)
+
+
+def load_profiles() -> dict:
+    """Load the profiles registry from disk."""
+    if not PROFILES_FILE.exists():
+        return {"profiles": {}, "active": None}
+    try:
+        import json as _json
+        return _json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"profiles": {}, "active": None}
+
+
+def save_profiles(data: dict) -> None:
+    """Persist the profiles registry to disk."""
+    import json as _json
+    PROFILES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOINHERIT"):
+        flags |= getattr(os, "O_NOINHERIT")
+    fd = os.open(str(PROFILES_FILE), flags, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(_json.dumps(data, indent=2))
+
+
+def get_active_profile() -> str | None:
+    """Return the name of the active profile, or None if not set."""
+    return load_profiles().get("active")
+
+
+def set_active_profile(name: str) -> None:
+    """Set the active profile by name. Raises ValueError if not found."""
+    data = load_profiles()
+    if name not in data.get("profiles", {}):
+        raise ValueError(f"Profile '{name}' not found.")
+    data["active"] = name
+    save_profiles(data)
 
 
 def open_vault(crypto: CryptoEngine) -> tuple[VaultStore, str, bytearray, Path]:
