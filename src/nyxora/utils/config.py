@@ -63,6 +63,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "keep_count": 10,
         "auto_backup": False,
     },
+    "update": {
+        "channel": "stable",          # stable | pre-release
+        "check_on_startup": True,
+        "check_interval_hours": 24,
+    },
 }
 
 # Allowed top-level sections and their value types (for validation)

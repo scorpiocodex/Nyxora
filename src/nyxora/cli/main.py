@@ -18,6 +18,7 @@ from nyxora.cli.commands import (
     recovery,
     secret,
     security,
+    update,
     vault,
 )
 from nyxora.utils.exceptions import NyxoraError
@@ -52,6 +53,12 @@ app.add_typer(security.app, name="security", help="[bold]Audit and forensics[/]:
 app.add_typer(backup.app, name="backup", help="[bold]Manage backups[/]: restore, export, verify.", rich_help_panel="💾 Data Portability")
 app.add_typer(recovery.app, name="recovery", help="[bold]Emergency recovery[/]: TOTP setup, capsules, secret splitting.", rich_help_panel="🚑 Emergency Access")
 app.add_typer(locker.app, name="locker", help="[bold]File encryption[/]: encrypt/decrypt arbitrary files.", rich_help_panel="📁 File Locker")
+app.add_typer(
+    update.app,
+    name="update",
+    help="[bold]Manage updates[/]: check, install, rollback.",
+    rich_help_panel="🔄 Updates"
+)
 
 
 # ── Version callback ──────────────────────────────────────────────────────────

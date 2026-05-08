@@ -94,6 +94,25 @@ def unlock(
             wipe_memory(root_key)
             ui.success_panel(f"Vault unlocked: {vp}")
 
+            # Non-blocking update notification
+            from nyxora.utils.config import Config as _Cfg
+            _cfg = _Cfg()
+            _cfg.load()
+            if _cfg.get("update.check_on_startup", True):
+                import threading
+                from nyxora.core.update_engine import background_check
+                _channel = _cfg.get("update.channel", "stable")
+
+                def _notify() -> None:
+                    msg = background_check(_channel)
+                    if msg:
+                        from nyxora.cli.ui import console
+                        console.print(
+                            f"  [#444441]⟳ {msg}[/#444441]"
+                        )
+
+                threading.Thread(target=_notify, daemon=True, name="nyxora-update-check").start()
+
 
 @app.command()
 def init(
