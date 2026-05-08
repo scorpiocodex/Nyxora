@@ -16,6 +16,7 @@ from nyxora.cli.commands import (
     generate,
     locker,
     recovery,
+    scripting,
     secret,
     security,
     update,
@@ -58,6 +59,12 @@ app.add_typer(
     name="update",
     help="[bold]Manage updates[/]: check, install, rollback.",
     rich_help_panel="🔄 Updates"
+)
+app.add_typer(
+    scripting.app,
+    name="script",
+    help="[bold]Scripting tools[/]: pipe, run, fzf integration.",
+    rich_help_panel="⚙️  Scripting & Integration"
 )
 
 
