@@ -159,3 +159,113 @@ def breach_scan() -> None:
     finally:
         store.close()
         wipe_memory(root_key)
+
+
+@app.command()
+def due(
+    days: int = typer.Option(90, "--days", "-d",
+                             help="Days threshold for password age"),
+) -> None:
+    """List entries whose password hasn't changed in N days."""
+    import datetime
+    import time
+    from rich.table import Table
+    from nyxora.cli.ui import ELEC_PURPLE, NEON_CYAN, console
+
+    store, root_key = _open_vault()
+    try:
+        entries = store.list_entries()
+        now = datetime.datetime.now()
+        threshold_secs = days * 86400
+        overdue = [
+            e for e in entries
+            if (int(time.time()) - e.updated_at) > threshold_secs
+        ]
+        overdue.sort(key=lambda e: e.updated_at)
+
+        if not overdue:
+            ui.success_panel(
+                f"All {len(entries)} entries updated within the last {days} days.",
+                title="Rotation Status"
+            )
+            return
+
+        table = Table(
+            title=f"[nyx.title]Overdue Entries (>{days} days)[/nyx.title]",
+            border_style=ELEC_PURPLE,
+            header_style=f"bold {NEON_CYAN}",
+        )
+        table.add_column("Title")
+        table.add_column("Last Updated")
+        table.add_column("Age")
+        table.add_column("Tags")
+
+        for e in overdue:
+            updated = datetime.datetime.fromtimestamp(e.updated_at)
+            age_days = (now - updated).days
+            age_str = f"[bold #FF3131]{age_days}d[/bold #FF3131]" if age_days > 180 \
+                else f"[#FFB000]{age_days}d[/#FFB000]"
+            table.add_row(
+                e.title,
+                updated.strftime("%Y-%m-%d"),
+                age_str,
+                ", ".join(e.tags) if e.tags else "—",
+            )
+        console.print(table)
+        ui.warning_panel(
+            f"{len(overdue)} of {len(entries)} entries overdue for rotation.",
+            title="Action Recommended"
+        )
+    finally:
+        store.close()
+        wipe_memory(root_key)
+
+
+@app.command()
+def health() -> None:
+    """Show vault security health score and breakdown."""
+    from nyxora.cli.ui import checklist_panel, danger_panel
+    from rich.table import Table
+    from nyxora.cli.ui import ELEC_PURPLE, NEON_CYAN, console
+
+    store, root_key = _open_vault()
+    try:
+        entries = store.list_entries()
+        with ui.spinner("Computing vault health score…"):
+            score = _intel.compute_health_score(entries)
+
+        # Grade color
+        grade_colors = {
+            "A": "#00FF41", "B": "#00FFFF",
+            "C": "#FFB000", "D": "#FF8000", "F": "#FF3131"
+        }
+        gc = grade_colors.get(score.grade, "#888780")
+
+        ui.info_panel(
+            f"[{gc}]Grade {score.grade}[/{gc}]  "
+            f"[bold {gc}]{score.total}[/bold {gc}] / 100\n\n"
+            f"  [#888780]Strength   [/#888780] {'█' * (score.strength_score // 2)}{'░' * (20 - score.strength_score // 2)}  {score.strength_score}/40\n"
+            f"  [#888780]Breach-free[/#888780] {'█' * (score.breach_score)}{'░' * (25 - score.breach_score)}  {score.breach_score}/25\n"
+            f"  [#888780]No reuse   [/#888780] {'█' * (score.duplicate_score)}{'░' * (15 - score.duplicate_score)}  {score.duplicate_score}/15\n"
+            f"  [#888780]Age        [/#888780] {'█' * (score.age_score)}{'░' * (10 - score.age_score)}  {score.age_score}/10\n"
+            f"  [#888780]TOTP       [/#888780] {'█' * (score.totp_score)}{'░' * (10 - score.totp_score)}  {score.totp_score}/10",
+            title="Vault Health Score"
+        )
+
+        items = [
+            (score.duplicate_count == 0,
+             f"No reused passwords ({score.duplicate_count} found)"),
+            (score.old_entries_count == 0,
+             f"All passwords rotated within 90 days "
+             f"({score.old_entries_count} overdue)"),
+            (score.totp_enabled_count > 0,
+             f"TOTP configured on {score.totp_enabled_count} of "
+             f"{score.total_entries} entries"),
+            (score.total >= 75,
+             f"Overall vault health: {score.grade} ({score.total}/100)"),
+        ]
+        checklist_panel("Health Checks", items,
+                        subtitle="Run 'nyx security audit' for full breach analysis.")
+    finally:
+        store.close()
+        wipe_memory(root_key)

@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS entries (
     notes_enc    BLOB,
     tags_enc     BLOB,
     custom_enc   BLOB,
+    totp_secret_enc BLOB,
     entry_hmac   BLOB    NOT NULL,
     created_at   INTEGER NOT NULL,
     updated_at   INTEGER NOT NULL,
@@ -97,7 +98,7 @@ HARDENED_PRAGMAS: list[str] = [
     "PRAGMA mmap_size=0",
 ]
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 
 
 # ── Data classes ───────────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ class EntryRecord:
     updated_at: int = 0
     accessed_at: int | None = None
     is_deleted: bool = False
+    totp_secret: str | None = None
 
 
 @dataclass
@@ -208,6 +210,31 @@ class VaultStore:
 
         conn = self._connect(path)
         self._conn = conn
+
+        # ── Schema migration v1 → v2 (adds totp_secret_enc column) ──────────
+        _ver_row = conn.execute(
+            "SELECT value FROM metadata WHERE key='schema_version'"
+        ).fetchone()
+        _stored_ver = _ver_row["value"] if _ver_row else "1"
+        if _stored_ver != SCHEMA_VERSION:
+            # Add column if missing (safe on any SQLite version)
+            _existing_cols = [
+                r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
+            ]
+            if "totp_secret_enc" not in _existing_cols:
+                with conn:
+                    conn.execute(
+                        "ALTER TABLE entries ADD COLUMN totp_secret_enc BLOB"
+                    )
+            # Update stored version
+            with conn:
+                conn.execute(
+                    "UPDATE metadata SET value=? WHERE key='schema_version'",
+                    (SCHEMA_VERSION,),
+                )
+            # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
+            self._write_schema_fingerprint(conn)
+        # ── End migration ─────────────────────────────────────────────────────
 
         # Verify schema fingerprint first
         self._verify_schema_fingerprint(conn)
@@ -365,6 +392,7 @@ class VaultStore:
         notes: str | None = None,
         tags: list[str] | None = None,
         custom: dict[str, Any] | None = None,
+        totp_secret: str | None = None,
         session_id: str | None = None,
     ) -> str:
         """Encrypt and store a new entry. Returns the new entry_id (UUID4)."""
@@ -387,6 +415,11 @@ class VaultStore:
             ef_custom = (
                 self._crypto.encrypt_field(orjson.dumps(custom or {}), entry_key)
             )
+            ef_totp = (
+                self._crypto.encrypt_field(totp_secret, entry_key)
+                if totp_secret
+                else None
+            )
 
             # Compute per-entry HMAC
             fields: dict[str, bytes] = {
@@ -401,6 +434,8 @@ class VaultStore:
                 fields["notes_enc"] = ef_notes.to_bytes()
             fields["tags_enc"] = ef_tags.to_bytes()
             fields["custom_enc"] = ef_custom.to_bytes()
+            if ef_totp:
+                fields["totp_secret_enc"] = ef_totp.to_bytes()
 
             entry_hmac = self._crypto.compute_entry_hmac(entry_id, fields, hmac_key)
 
@@ -408,9 +443,9 @@ class VaultStore:
                 conn.execute(
                     """INSERT INTO entries
                        (id, title_enc, username_enc, password_enc, url_enc, notes_enc,
-                        tags_enc, custom_enc, entry_hmac, created_at, updated_at,
-                        entry_salt, is_deleted)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)""",
+                        tags_enc, custom_enc, totp_secret_enc, entry_hmac, created_at,
+                        updated_at, entry_salt, is_deleted)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)""",
                     (
                         entry_id,
                         ef_title.to_bytes(),
@@ -420,6 +455,7 @@ class VaultStore:
                         ef_notes.to_bytes() if ef_notes else None,
                         ef_tags.to_bytes(),
                         ef_custom.to_bytes(),
+                        ef_totp.to_bytes() if ef_totp else None,
                         entry_hmac,
                         now,
                         now,
@@ -443,6 +479,7 @@ class VaultStore:
                     updated_at=now,
                     accessed_at=None,
                     is_deleted=False,
+                    totp_secret=totp_secret,
                 )
         finally:
             wipe_memory(entry_key)
@@ -490,6 +527,7 @@ class VaultStore:
         notes: str | None = None,
         tags: list[str] | None = None,
         custom: dict[str, Any] | None = None,
+        totp_secret: str | None = None,
         session_id: str | None = None,
     ) -> None:
         """Update fields on an existing entry, re-computing the per-entry HMAC."""
@@ -515,6 +553,11 @@ class VaultStore:
             new_notes = notes if notes is not None else existing.notes
             new_tags = tags if tags is not None else existing.tags
             new_custom = custom if custom is not None else existing.custom
+            # None = keep existing; empty string = clear TOTP
+            if totp_secret is not None:
+                new_totp_secret = totp_secret if totp_secret else None
+            else:
+                new_totp_secret = existing.totp_secret
 
             ef_title = self._crypto.encrypt_field(new_title, entry_key)
             ef_password = self._crypto.encrypt_field(new_password, entry_key)
@@ -535,6 +578,11 @@ class VaultStore:
             ef_custom = self._crypto.encrypt_field(
                 orjson.dumps(new_custom), entry_key
             )
+            ef_totp = (
+                self._crypto.encrypt_field(new_totp_secret, entry_key)
+                if new_totp_secret
+                else None
+            )
 
             fields: dict[str, bytes] = {
                 "title_enc": ef_title.to_bytes(),
@@ -548,6 +596,8 @@ class VaultStore:
                 fields["notes_enc"] = ef_notes.to_bytes()
             fields["tags_enc"] = ef_tags.to_bytes()
             fields["custom_enc"] = ef_custom.to_bytes()
+            if ef_totp:
+                fields["totp_secret_enc"] = ef_totp.to_bytes()
 
             new_hmac = self._crypto.compute_entry_hmac(entry_id, fields, hmac_key)
             now = int(time.time())
@@ -557,6 +607,7 @@ class VaultStore:
                     """UPDATE entries SET
                        title_enc=?, username_enc=?, password_enc=?,
                        url_enc=?, notes_enc=?, tags_enc=?, custom_enc=?,
+                       totp_secret_enc=?,
                        entry_hmac=?, updated_at=?
                        WHERE id=?""",
                     (
@@ -567,6 +618,7 @@ class VaultStore:
                         ef_notes.to_bytes() if ef_notes else None,
                         ef_tags.to_bytes(),
                         ef_custom.to_bytes(),
+                        ef_totp.to_bytes() if ef_totp else None,
                         new_hmac,
                         now,
                         entry_id,
@@ -833,6 +885,11 @@ class VaultStore:
             fields["tags_enc"] = bytes(row["tags_enc"])
         if row["custom_enc"]:
             fields["custom_enc"] = bytes(row["custom_enc"])
+        try:
+            if row["totp_secret_enc"]:
+                fields["totp_secret_enc"] = bytes(row["totp_secret_enc"])
+        except (IndexError, Exception):
+            pass  # column not yet present in very old vault
 
         stored_hmac = bytes(row["entry_hmac"])
         expected_hmac = self._crypto.compute_entry_hmac(row["id"], fields, hmac_key)
@@ -865,6 +922,11 @@ class VaultStore:
             tags: list[str] = orjson.loads(tags_b) if tags_b else []
             custom_b = dec(row["custom_enc"])
             custom: dict[str, Any] = orjson.loads(custom_b) if custom_b else {}
+            try:
+                totp_b = dec(row["totp_secret_enc"])
+                totp_secret = totp_b.decode("utf-8") if totp_b else None
+            except (IndexError, Exception):
+                totp_secret = None
 
             return EntryRecord(
                 id=entry_id,
@@ -879,6 +941,7 @@ class VaultStore:
                 updated_at=row["updated_at"],
                 accessed_at=row["accessed_at"],
                 is_deleted=bool(row["is_deleted"]),
+                totp_secret=totp_secret,
             )
         finally:
             wipe_memory(entry_key)

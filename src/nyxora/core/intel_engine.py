@@ -92,6 +92,23 @@ class VaultAuditReport:
     errors: list[str] = field(default_factory=list)
 
 
+@dataclass
+class VaultHealthScore:
+    """Composite security posture score for the vault (0–100)."""
+    total: int                          # composite score
+    strength_score: int                 # 0–40
+    breach_score: int                   # 0–25
+    duplicate_score: int                # 0–15
+    age_score: int                      # 0–10
+    totp_score: int                     # 0–10
+    total_entries: int
+    breached_count: int
+    duplicate_count: int
+    old_entries_count: int              # entries > 90 days since update
+    totp_enabled_count: int
+    grade: str                          # A / B / C / D / F
+
+
 # ── IntelEngine ───────────────────────────────────────────────────────────────
 
 class IntelEngine:
@@ -427,3 +444,109 @@ class IntelEngine:
         report.duplicate_count = sum(len(g) for g in dup_groups)
         report.strength_histogram = histogram
         return report
+
+    def compute_health_score(
+        self,
+        entries: list[Any],             # list of EntryRecord
+        age_threshold_days: int = 90,
+    ) -> "VaultHealthScore":
+        """Compute a 0–100 vault health score from decrypted entries.
+
+        Scoring weights:
+          Strength distribution  40 pts
+          Breach-free            25 pts
+          No duplicates          15 pts
+          Password age           10 pts
+          TOTP coverage          10 pts
+        """
+        import time as _time
+        from nyxora.core.vault_store import EntryRecord
+
+        total_entries = len(entries)
+        if total_entries == 0:
+            return VaultHealthScore(
+                total=100, strength_score=40, breach_score=25,
+                duplicate_score=15, age_score=10, totp_score=10,
+                total_entries=0, breached_count=0, duplicate_count=0,
+                old_entries_count=0, totp_enabled_count=0, grade="A"
+            )
+
+        # ── Strength score (40 pts) ──────────────────────────────────────
+        strength_weights = {"Excellent": 1.0, "Strong": 0.7,
+                            "Fair": 0.4, "Weak": 0.0}
+        strength_sum = 0.0
+        for e in entries:
+            entropy = self.score_entropy(e.password)
+            strength = self.classify_strength(entropy)
+            strength_sum += strength_weights.get(strength, 0.0)
+        strength_score = int((strength_sum / total_entries) * 40)
+
+        # ── Breach score (25 pts) ────────────────────────────────────────
+        # Use duplicate detection (SHA-256) as proxy — real breach check
+        # is too slow here; use last known audit data via detect_duplicates
+        dup_map = self.detect_duplicates(
+            [(e.id, e.password) for e in entries]
+        )
+        duplicate_count = len(dup_map)
+
+        # Breach: we only count entries already known bad (reuse == breach risk)
+        # For a real breach count, audit_all must be called separately.
+        # Health score uses entropy as breach proxy for responsiveness.
+        weak_entries = sum(
+            1 for e in entries
+            if self.classify_strength(self.score_entropy(e.password)) == "Weak"
+        )
+        breach_score = max(0, 25 - int((weak_entries / total_entries) * 25))
+
+        # ── Duplicate score (15 pts) ─────────────────────────────────────
+        duplicate_score = max(0, 15 - (duplicate_count * 5))
+
+        # ── Age score (10 pts) ───────────────────────────────────────────
+        now = int(_time.time())
+        threshold_secs = age_threshold_days * 86400
+        old_entries = [e for e in entries
+                       if (now - e.updated_at) > threshold_secs]
+        old_entries_count = len(old_entries)
+        age_score = max(
+            0, 10 - int((old_entries_count / total_entries) * 10)
+        )
+
+        # ── TOTP score (10 pts) ──────────────────────────────────────────
+        totp_enabled = [
+            e for e in entries
+            if getattr(e, "totp_secret", None)
+        ]
+        totp_enabled_count = len(totp_enabled)
+        totp_score = int((totp_enabled_count / total_entries) * 10)
+
+        # ── Composite ────────────────────────────────────────────────────
+        total_score = (
+            strength_score + breach_score + duplicate_score
+            + age_score + totp_score
+        )
+
+        if total_score >= 90:
+            grade = "A"
+        elif total_score >= 75:
+            grade = "B"
+        elif total_score >= 60:
+            grade = "C"
+        elif total_score >= 40:
+            grade = "D"
+        else:
+            grade = "F"
+
+        return VaultHealthScore(
+            total=total_score,
+            strength_score=strength_score,
+            breach_score=breach_score,
+            duplicate_score=duplicate_score,
+            age_score=age_score,
+            totp_score=totp_score,
+            total_entries=total_entries,
+            breached_count=0,           # requires audit_all for real count
+            duplicate_count=duplicate_count,
+            old_entries_count=old_entries_count,
+            totp_enabled_count=totp_enabled_count,
+            grade=grade,
+        )

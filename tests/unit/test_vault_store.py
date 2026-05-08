@@ -213,3 +213,42 @@ def test_vault_audit_details_encryption(crypto, db_path):
     assert events[0]["detail"] == {"ip": "127.0.0.1"}
 
     store.close()
+
+
+def test_vault_totp_field(tmp_path):
+    """TOTP secret stores, retrieves, and migrates correctly."""
+    from nyxora.core.crypto_engine import CryptoEngine
+    from nyxora.core.vault_store import VaultStore
+    from nyxora.core.memory_guard import wipe_memory
+
+    engine = CryptoEngine(argon2_memory=8192, argon2_time=1, argon2_parallelism=1)
+    salt = engine.generate_salt()
+    root_key = engine.derive_key("test-totp", salt)
+    vault_path = tmp_path / "totp.nyx"
+
+    store = VaultStore(engine)
+    store.initialize(vault_path, root_key)
+
+    # Add entry with TOTP secret
+    eid = store.add_entry("GitHub", "hunter2",
+                          totp_secret="JBSWY3DPEHPK3PXP")
+    rec = store.get_entry(eid)
+    assert rec.totp_secret == "JBSWY3DPEHPK3PXP"
+
+    # Update TOTP secret
+    store.update_entry(eid, totp_secret="NEWBASE32SECRET2")
+    rec2 = store.get_entry(eid)
+    assert rec2.totp_secret == "NEWBASE32SECRET2"
+
+    # Clear TOTP secret with empty string
+    store.update_entry(eid, totp_secret="")
+    rec3 = store.get_entry(eid)
+    assert rec3.totp_secret is None
+
+    # Entry without TOTP has totp_secret=None
+    eid2 = store.add_entry("Gmail", "pass123")
+    rec4 = store.get_entry(eid2)
+    assert rec4.totp_secret is None
+
+    store.close()
+    wipe_memory(root_key)

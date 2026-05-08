@@ -162,6 +162,10 @@ def update(
     tags: Optional[str] = typer.Option(
         None, "--tags", help="Comma-separated tags (replaces existing)"
     ),
+    totp_secret: Optional[str] = typer.Option(
+        None, "--totp-secret",
+        help="TOTP base32 secret to store with this entry ('' to clear)"
+    ),
 ) -> None:
     """Update fields on an existing entry."""
     import questionary
@@ -186,6 +190,7 @@ def update(
     if url: changed.append("url")
     if notes: changed.append("notes")
     if changed_tags: changed.append("tags")
+    if totp_secret is not None: changed.append("totp-secret")
 
     store, root_key = _open_vault()
     try:
@@ -197,6 +202,7 @@ def update(
             url=url,
             notes=notes,
             tags=tags_list,
+            totp_secret=totp_secret,
         )
         update_diff_panel(changed)
     finally:
@@ -243,6 +249,70 @@ def search(query: str = typer.Argument(..., help="Search query")) -> None:
                 } for e in results])
                 return
             ui.table_entries(results)
+    finally:
+        store.close()
+        wipe_memory(root_key)
+
+
+@app.command()
+def totp(
+    entry_id: str = typer.Argument(..., help="Entry ID"),
+    copy: bool = typer.Option(False, "--copy", "-c",
+                              help="Copy code to clipboard"),
+    watch: bool = typer.Option(False, "--watch", "-w",
+                               help="Refresh every 30s automatically"),
+) -> None:
+    """Show the live TOTP code for an entry."""
+    import math
+    import time
+    import pyotp
+
+    store, root_key = _open_vault()
+    try:
+        record = store.get_entry(entry_id)
+        if not getattr(record, "totp_secret", None):
+            ui.error_panel(
+                f"Entry '{record.title}' has no TOTP secret stored.\n"
+                f"Add one with: nyx secret update {entry_id} --totp-secret <BASE32>"
+            )
+            raise typer.Exit(1)
+
+        def _show_code() -> None:
+            totp_obj = pyotp.TOTP(record.totp_secret)
+            code = totp_obj.now()
+            remaining = 30 - (int(time.time()) % 30)
+            filled = int((remaining / 30) * 20)
+            bar = f"[#C89A30]{'█' * filled}[/#C89A30][#444441]{'░' * (20 - filled)}[/#444441]"
+            ui.print_line(
+                f"  [bold #00FF41]{code[:3]} {code[3:]}[/bold #00FF41]"
+                f"  {bar}  [#888780]{remaining}s[/#888780]"
+            )
+            if copy:
+                try:
+                    import pyperclip
+                    pyperclip.copy(code)
+                    from nyxora.cli.ui import clipboard_countdown
+                    clipboard_countdown(30)
+                except Exception:
+                    pass
+
+        ui.print_line(
+            f"  [bold #888780]TOTP for[/bold #888780] "
+            f"[bold #00FFFF]{record.title}[/bold #00FFFF]"
+        )
+        _show_code()
+
+        if watch:
+            import time as _time
+            ui.print_line("  [#888780]Watching… press Ctrl+C to exit[/#888780]")
+            try:
+                while True:
+                    _time.sleep(1)
+                    remaining = 30 - (int(_time.time()) % 30)
+                    if remaining == 30:   # new period
+                        _show_code()
+            except KeyboardInterrupt:
+                pass
     finally:
         store.close()
         wipe_memory(root_key)

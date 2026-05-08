@@ -108,3 +108,48 @@ def test_check_breach_hibp_network_error(mock_sleep, mock_get, intel):
         intel.check_breach_hibp("testpw")
         assert mock_get.call_count == 2
         assert mock_sleep.call_count == 1
+
+
+def test_vault_health_score():
+    from nyxora.core.crypto_engine import CryptoEngine
+    from nyxora.core.intel_engine import IntelEngine
+    from unittest.mock import MagicMock
+    import time
+
+    engine = CryptoEngine(argon2_memory=8192, argon2_time=1, argon2_parallelism=1)
+    intel = IntelEngine(engine)
+
+    # Mock entries
+    now = int(time.time())
+    e1 = MagicMock()
+    e1.id = "id1"; e1.password = "X#9kLmP!qRsT2vWz"
+    e1.updated_at = now; e1.totp_secret = "JBSWY3DP"
+
+    e2 = MagicMock()
+    e2.id = "id2"; e2.password = "correcthorsebatterystaple"
+    e2.updated_at = now; e2.totp_secret = None
+
+    e3 = MagicMock()
+    e3.id = "id3"; e3.password = "abc"   # weak
+    e3.updated_at = now - (200 * 86400)  # 200 days old
+    e3.totp_secret = None
+
+    score = intel.compute_health_score([e1, e2, e3])
+
+    assert 0 <= score.total <= 100
+    assert score.grade in ("A", "B", "C", "D", "F")
+    assert score.total_entries == 3
+    assert score.old_entries_count == 1      # e3 is old
+    assert score.totp_enabled_count == 1     # e1 has TOTP
+    assert score.strength_score >= 0
+    assert score.age_score < 10              # penalised for e3
+
+
+def test_vault_health_score_empty():
+    from nyxora.core.crypto_engine import CryptoEngine
+    from nyxora.core.intel_engine import IntelEngine
+    engine = CryptoEngine(argon2_memory=8192, argon2_time=1, argon2_parallelism=1)
+    intel = IntelEngine(engine)
+    score = intel.compute_health_score([])
+    assert score.total == 100
+    assert score.grade == "A"
