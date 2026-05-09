@@ -46,7 +46,14 @@ def save_session(session_id: str, vault_path: str, root_key_hex: str) -> None:
     try:
         keyring.set_password(SERVICE_NAME, session_id, root_key_hex)
     except Exception as e:  # pragma: no cover
-        ui.error_panel(f"Failed to securely store session key in OS keyring: {e}")  # pragma: no cover
+        ui.error_panel(  # pragma: no cover
+            f"Failed to securely store session key in OS keyring: {e}\n\n"
+            f"On Linux, install a keyring backend:\n"
+            f"  pip install keyrings.alt          (simple file-based, works everywhere)\n"
+            f"  sudo apt install gnome-keyring    (recommended for desktop Linux)\n\n"
+            f"On Windows, this should work automatically via DPAPI.",
+            title="Keyring Error"
+        )  # pragma: no cover
         raise typer.Exit(1)  # pragma: no cover
 
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
