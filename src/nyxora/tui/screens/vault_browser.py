@@ -37,16 +37,18 @@ class VaultBrowserScreen(Screen):
     """Main vault browser: entry list (left) + detail panel (right)."""
 
     BINDINGS = [
-        Binding("j,down", "cursor_down", "Down", show=False),
-        Binding("k,up",   "cursor_up",   "Up",   show=False),
-        Binding("/",       "search",      "Search"),
-        Binding("c",       "copy_pass",   "Copy"),
-        Binding("e",       "edit",        "Edit",   show=False),
-        Binding("d",       "delete",      "Delete", show=False),
-        Binding("t",       "totp",        "TOTP"),
-        Binding("A",       "audit",       "Audit"),
-        Binding("p",       "profiles",    "Profiles", show=False),
-        Binding("escape",  "clear_search","Clear",    show=False),
+        Binding("j",      "cursor_down", "Down",     show=False),
+        Binding("down",   "cursor_down", "Down",     show=False),
+        Binding("k",      "cursor_up",   "Up",       show=False),
+        Binding("up",     "cursor_up",   "Up",       show=False),
+        Binding("slash",  "search",      "Search"),
+        Binding("c",      "copy_pass",   "Copy"),
+        Binding("e",      "edit",        "Edit",     show=False),
+        Binding("d",      "delete",      "Delete",   show=False),
+        Binding("t",      "totp",        "TOTP"),
+        Binding("A",      "audit",       "Audit"),
+        Binding("p",      "profiles",    "Profiles", show=False),
+        Binding("escape", "clear_search","Clear",    show=False),
     ]
 
     _filter: reactive[str] = reactive("", recompose=False)
@@ -228,6 +230,23 @@ class VaultBrowserScreen(Screen):
             f"Active: {active}  ·  Profiles: {', '.join(profiles) or 'none'}",
             title="Vault Profiles",
         )
+
+    def on_key(self, event) -> None:
+        """Forward key events to screen actions when ListView has focus."""
+        key = event.key
+        action_map = {
+            "c": "copy_pass",
+            "t": "totp",
+            "d": "delete",
+            "e": "edit",
+            "A": "audit",
+            "p": "profiles",
+            "slash": "search",
+            "escape": "clear_search",
+        }
+        if key in action_map:
+            self.run_action(action_map[key])
+            event.stop()
 
     def apply_filter(self, query: str) -> None:
         """Called by the search overlay to apply a filter."""

@@ -15,8 +15,8 @@ class NyxoraApp(App):
     CSS_PATH = Path(__file__).parent / "theme.tcss"
 
     BINDINGS = [
-        Binding("q", "quit", "Quit"),
-        Binding("?", "help_info", "Help", show=True),
+        Binding("q", "quit", "Quit", show=True),
+        Binding("question_mark", "help_info", "Help", show=True),
     ]
 
     SCREENS = {}  # registered in on_mount

@@ -29,12 +29,12 @@ Screen {
 /* ── Header ────────────────────────────────────────────────────────── */
 
 #tui-header {
-    height: 1;
+    height: 3;
     background: #0F1218;
     border-bottom: tall #1A2430;
     color: #C89A30;
     text-style: bold;
-    padding: 0 1;
+    padding: 1 1;
 }
 
 /* ── Entry list ────────────────────────────────────────────────────── */
