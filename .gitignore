@@ -65,6 +65,7 @@ build_release.py
 scripts_build/
 nyxora_windows.spec
 _tmp_build.spec
+assets/nyxora_icon.png
 assets/nyxora_icon.ico
 dist/
 build/
