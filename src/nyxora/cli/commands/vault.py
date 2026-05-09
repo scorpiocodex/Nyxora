@@ -54,6 +54,7 @@ def unlock(
                 raise typer.Exit(1)  # pragma: no cover
             # Create new vault  # pragma: no cover
             salt = _engine.generate_salt()  # pragma: no cover
+            vp.parent.mkdir(parents=True, exist_ok=True)  # pragma: no cover
             with ui.spinner("Deriving key (Argon2id)…"):  # pragma: no cover
                 root_key = _engine.derive_key(pw, salt)  # pragma: no cover
             store = VaultStore(_engine)  # pragma: no cover
