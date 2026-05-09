@@ -60,9 +60,11 @@ Thumbs.db
 *.bak
 .claude/
 
-# Local build tooling (not for public repo)
+# Local build tooling — never commit
+build_release.py
 scripts_build/
 nyxora_windows.spec
-assets/nyxora_icon.ico
-build_release.py
 _tmp_build.spec
+assets/nyxora_icon.ico
+dist/
+build/
