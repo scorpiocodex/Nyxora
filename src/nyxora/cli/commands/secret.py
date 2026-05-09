@@ -21,6 +21,20 @@ def _open_vault() -> tuple[VaultStore, bytearray]:
     return store, root_key
 
 
+def _resolve_entry(store: VaultStore, entry_id: str):
+    """Resolve entry by UUID first, then by title search fallback."""
+    from nyxora.utils.exceptions import EntryNotFoundError
+    try:
+        return store.get_entry(entry_id)
+    except EntryNotFoundError:
+        results = store.search_entries(entry_id)
+        if not results:
+            raise EntryNotFoundError(
+                f"Entry '{entry_id}' not found by ID or title."
+            )
+        return results[0]
+
+
 @app.command()
 def add(
     title: Optional[str] = typer.Option(None, "--title", "-t"),
@@ -113,7 +127,7 @@ def get(
     """Get and display a vault entry."""
     store, root_key = _open_vault()
     try:
-        record = store.get_entry(entry_id)
+        record = _resolve_entry(store, entry_id)
         if is_json_mode():
             json_out({
                 "id": record.id,
@@ -194,8 +208,9 @@ def update(
 
     store, root_key = _open_vault()
     try:
+        record = _resolve_entry(store, entry_id)
         store.update_entry(
-            entry_id,
+            record.id,
             title=title,
             username=username,
             password=new_password,
@@ -225,8 +240,9 @@ def delete(
 
     store, root_key = _open_vault()
     try:
-        store.delete_entry(entry_id)
-        ui.success_panel(f"Entry {entry_id[:8]}… deleted.")
+        record = _resolve_entry(store, entry_id)
+        store.delete_entry(record.id)
+        ui.success_panel(f"Entry {record.id[:8]}… deleted.")
     finally:
         store.close()
         wipe_memory(root_key)
@@ -269,7 +285,7 @@ def totp(
 
     store, root_key = _open_vault()
     try:
-        record = store.get_entry(entry_id)
+        record = _resolve_entry(store, entry_id)
         if not getattr(record, "totp_secret", None):
             ui.error_panel(
                 f"Entry '{record.title}' has no TOTP secret stored.\n"
@@ -326,7 +342,7 @@ def clone(
     """Clone an entry with a new title and ID."""
     store, root_key = _open_vault()  # pragma: no cover
     try:  # pragma: no cover
-        record = store.get_entry(entry_id)  # pragma: no cover
+        record = _resolve_entry(store, entry_id)  # pragma: no cover
         clone_title = new_title or f"{record.title} (copy)"  # pragma: no cover
         new_id = store.add_entry(  # pragma: no cover
             clone_title, record.password,  # pragma: no cover
