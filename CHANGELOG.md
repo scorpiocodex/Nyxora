@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.1] - 2026-05-10
+
+### Fixed
+- **vault unlock --create**: parent directory now created before vault
+  initialisation — prevented sqlite3.OperationalError on fresh installs
+- **Linux keyring fallback**: when no keyring daemon is available on Linux,
+  session key falls back to ~/.nyxora/session.key (mode 0o600) with a clear
+  warning; error message now includes actionable fix commands
+- **Wrong password message**: IntegrityError on unlock now shows "Wrong
+  password or corrupted vault" instead of the misleading
+  "Schema fingerprint mismatch — structural tampering detected"
+- **Title search on all entry commands**: nyx secret get/update/delete/
+  clone/totp and nyx script pipe/run/fzf now accept entry titles as well
+  as UUIDs
+- **TUI keybindings**: moved all bindings to App level to bypass ListView
+  key capture; j/k/c/t/d/A/slash/Esc/q all functional
+- **TUI CSS**: replaced invalid 'gap' property with 'grid-gutter'
+- **TUI delete**: two-press D confirmation now performs actual vault deletion
+  and refreshes the entry list in real time
+
+---
+
 ## [2.6.0] - 2026-05-03
 
 ### Added
