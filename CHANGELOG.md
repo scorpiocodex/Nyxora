@@ -5,6 +5,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.0] - 2026-05-03
+
+### Added
+- **Auto-updater** (`nyx update check/install/rollback/channel`) — GitHub
+  Releases API integration with SHA-256 integrity verification, rollback
+  support, and non-blocking startup version notification after unlock
+- **Named vault profiles** (`nyx vault profiles/use/add-profile/remove-profile`)
+  — multiple vaults managed from one installation; active profile auto-resolves
+  vault path across all commands
+- **JSON output mode** (`nyx --json`) — any command emits machine-readable JSON;
+  supported on secret get/list/search, vault status, generate password/passphrase
+- **TOTP per entry** — store a TOTP secret alongside credentials;
+  `nyx secret totp [entry]` shows live 6-digit code with countdown bar;
+  `--watch` flag auto-refreshes every 30 seconds
+- **Vault health score** (`nyx security health`) — 0–100 composite grade
+  across strength, breach-free, no-reuse, age, and TOTP coverage
+- **Rotation reminders** (`nyx security due [--days N]`) — lists entries
+  whose password hasn't changed in N days, sorted oldest-first
+- **nyx vault import** — extended with `--totp-secret` on update command
+- **Scripting layer** — `nyx script pipe`, `nyx script run`, `nyx script fzf`
+  for credential injection into subprocesses without shell history exposure
+- **Python SDK** (`from nyxora import VaultClient`) — high-level programmatic
+  vault access with context manager, session-based and password-based modes
+- **Textual TUI** (`nyx tui`) — Obsidian Tactical interactive vault browser;
+  entry list with j/k navigation, live search overlay, detail panel with
+  TOTP countdown, audit dashboard, amber #C89A30 tactical theme
+- **Shell completions v2** — entry titles complete live from vault on Tab
+  for `nyx secret get`, `nyx secret update`, `nyx secret delete`
+- **PyInstaller build** — Windows standalone `nyx.exe` with gem icon;
+  `python scripts_build/build_windows.py` produces a single-file executable
+
+### Security
+- Schema version bumped to "2"; silent migration adds `totp_secret_enc` column
+  to existing v2.0.0 vaults on first open — HMAC stays consistent
+
+### Breaking Changes
+- None — fully backward-compatible with v2.0.0 vault files
+
+---
+
 ## [2.0.0] - 2026-05-03
 
 ### Added

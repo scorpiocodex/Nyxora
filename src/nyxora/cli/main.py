@@ -80,9 +80,15 @@ app.add_typer(
 def version_callback(value: bool) -> None:
     if value:
         from nyxora.cli import ui
-        ui.vault_header()
-        ui.print_line(f"  [bold #00FFFF]NYXORA[/] v{__version__}")
-        ui.print_line()
+        ui.print_line(
+            f"\n  [bold #C89A30]◆[/bold #C89A30] "
+            f"[bold #E8D5A8]NYXORA[/bold #E8D5A8]  "
+            f"[#344252]Tactical Secrets Vault[/#344252]\n"
+            f"  [#2E3C4A]Version   [/#2E3C4A][bold #C89A30]v{__version__}[/bold #C89A30]\n"
+            f"  [#2E3C4A]License   [/#2E3C4A][#344252]MIT[/#344252]\n"
+            f"  [#2E3C4A]Author    [/#2E3C4A][#344252]ScorpioCodeX[/#344252]\n"
+            f"  [#2E3C4A]Cipher    [/#2E3C4A][#344252]Argon2id · XChaCha20-Poly1305[/#344252]\n"
+        )
         raise typer.Exit()
 
 

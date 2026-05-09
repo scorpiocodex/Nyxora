@@ -6,7 +6,7 @@ from typing import Optional
 import typer
 
 from nyxora.cli import ui
-from nyxora.cli.helpers import open_vault
+from nyxora.cli.helpers import complete_entry_ids, open_vault
 from nyxora.cli.ui import clipboard_countdown, is_json_mode, json_out, update_diff_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
@@ -107,7 +107,7 @@ def list_entries(
 
 @app.command()
 def get(
-    entry_id: str = typer.Argument(..., help="Entry ID (or prefix)"),
+    entry_id: str = typer.Argument(..., help="Entry ID (or prefix)", autocompletion=complete_entry_ids),
     copy: bool = typer.Option(False, "--copy", "-c", help="Copy password to clipboard"),
 ) -> None:
     """Get and display a vault entry."""
@@ -154,7 +154,7 @@ def get(
 
 @app.command()
 def update(
-    entry_id: str = typer.Argument(..., help="Entry ID"),
+    entry_id: str = typer.Argument(..., help="Entry ID", autocompletion=complete_entry_ids),
     title: Optional[str] = typer.Option(None, "--title", "-t"),
     username: Optional[str] = typer.Option(None, "--username", "-u"),
     url: Optional[str] = typer.Option(None, "--url"),
@@ -212,7 +212,7 @@ def update(
 
 @app.command()
 def delete(
-    entry_id: str = typer.Argument(..., help="Entry ID"),
+    entry_id: str = typer.Argument(..., help="Entry ID", autocompletion=complete_entry_ids),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
 ) -> None:
     """Delete (soft) an entry from the vault."""

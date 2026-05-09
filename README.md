@@ -4,7 +4,7 @@
 
 <p><b>Terminal-Native, Zero-Knowledge, Quantum-Resilient Password Intelligence Vault</b></p>
 
-  <img alt="Version" src="https://img.shields.io/badge/version-2.0.0-00FFFF?style=for-the-badge&logo=appveyor">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.6.0-00FFFF?style=for-the-badge&logo=appveyor">
   <img alt="Coverage" src="https://img.shields.io/badge/coverage-98%25-00FF41?style=for-the-badge&logo=pytest">
   <img alt="Python" src="https://img.shields.io/badge/python-3.12--3.14-8B00FF?style=for-the-badge&logo=python">
   ![CI](https://github.com/scorpiocodex/Nyxora/actions/workflows/ci.yml/badge.svg)
@@ -16,7 +16,7 @@
 ██║╚██╗██║  ╚██╔╝   ██╔██╗ ██║   ██║██╔══██╗██╔══██║
 ██║ ╚████║   ██║   ██╔╝ ██╗╚██████╔╝██║  ██║██║  ██║
 ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-  [ O F F L I N E ] • [ Z E R O  K N O W L E D G E ] • [ C Y B E R P U N K ]
+  [ O F F L I N E ] • [ Z E R O  K N O W L E D G E ] • [ T A C T I C A L  S E C R E T S  V A U L T ]
 ```
 
 *Designed and engineered by [ScorpioCodeX](https://github.com/scorpiocodex)*
@@ -96,6 +96,12 @@ nyx secret add --generate -t "GitHub" -u "cyber-ninja"
 
 # 6. Search and securely push the password to your clipboard
 nyx secret get "GitHub" --copy
+
+# 7. Launch the interactive vault browser
+nyx tui
+
+# 8. Check for updates
+nyx update check
 ```
 
 ---
@@ -112,6 +118,8 @@ Nyxora organizes its massive array of tools into clear, structured sub-modules. 
 * `nyx vault change-password` : Dynamically rotate the master derivation key sequence.
 * `nyx vault import` : Bulk-import entries from CSV, Bitwarden, or 1Password.
 * `nyx vault panic` : **Emergency Protocol**. Rapidly purge all RAM limits and shell bindings immediately.
+* `nyx vault profiles` / `nyx vault use <name>` : Manage named vault profiles.
+* `nyx update check/install/rollback` : Auto-updater with SHA-256 integrity verification.
 
 ### 🔒 Secrets Engine
 * `nyx secret add` : Inject a new database item with associated URIs, notes, tags, and arbitrary `--custom` key=value fields.
@@ -143,6 +151,16 @@ Nyxora organizes its massive array of tools into clear, structured sub-modules. 
 ### 📁 File Locker
 * `nyx locker encrypt` / `nyx locker decrypt` : Bind arbitrary large files (`.pdf`, `.jpg`, `.txt`, `.mp4`) directly into strict encryption boundaries shielded by the vault's derived XChaCha keys.
 
+### 🔌 Scripting & Integration
+* `nyx script pipe <entry> -- <cmd>` : Pipe credential to command stdin without shell history exposure.
+* `nyx script run <entry> -- <cmd>` : Inject credentials as env vars (`NYX_PASSWORD`, `NYX_USERNAME`, `NYX_URL`, custom fields).
+* `nyx script fzf` : Fuzzy-find entries with fzf — `--field`, `--copy`, `--show`, `--json` output modes.
+* `nyx --json <command>` : Machine-readable JSON output for any command (secret get/list/search, vault status, generate).
+* `from nyxora import VaultClient` : Python SDK for programmatic access — context manager, CRUD, TOTP, health score.
+
+### 🖥️ Interactive
+* `nyx tui` : Obsidian Tactical vault browser — j/k navigation, live search overlay, detail panel with TOTP countdown, audit dashboard.
+
 ---
 
 ## 🏗️ Execution Architecture
@@ -163,5 +181,5 @@ graph TD
 ---
 
 <div align="center">
-  <sub><b>Nyxora v2.0.0</b> ◦ Developed by ScorpioCodeX ◦ Under MIT License</sub>
+  <sub><b>Nyxora v2.6.0</b> ◦ Developed by ScorpioCodeX ◦ Under MIT License</sub>
 </div>

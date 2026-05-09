@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import keyring
 import typer
@@ -132,6 +133,34 @@ def set_active_profile(name: str) -> None:
         raise ValueError(f"Profile '{name}' not found.")
     data["active"] = name
     save_profiles(data)
+
+
+def complete_entry_ids(
+    ctx: Any, incomplete: str
+) -> list[str]:
+    """Shell completion callback — returns entry titles matching incomplete."""
+    try:
+        from nyxora.core.crypto_engine import CryptoEngine
+        from nyxora.core.vault_store import VaultStore
+        session = load_session()
+        if session is None:
+            return []
+        _, vault_path, root_key = session
+        engine = CryptoEngine(
+            argon2_memory=8192, argon2_time=1, argon2_parallelism=1
+        )
+        store = VaultStore(engine)
+        store.open(vault_path, root_key)
+        entries = store.list_entries()
+        store.close()
+        from nyxora.core.memory_guard import wipe_memory
+        wipe_memory(root_key)
+        return [
+            e.title for e in entries
+            if incomplete.lower() in e.title.lower()
+        ]
+    except Exception:
+        return []
 
 
 def open_vault(crypto: CryptoEngine) -> tuple[VaultStore, str, bytearray, Path]:

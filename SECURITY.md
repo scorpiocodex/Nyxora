@@ -6,8 +6,9 @@ Only the current main version of Nyxora is supported for security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| v2.0.x  | ✅                 |
-| v1.2.x  | ✅ (security fixes only) |
+| v2.6.x  | ✅                 |
+| v2.0.x  | ✅ (security fixes only) |
+| v1.2.x  | ❌                 |
 | v1.1.x  | ❌                 |
 | v1.0.x  | ❌                 |
 
