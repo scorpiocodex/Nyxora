@@ -1,185 +1,223 @@
 <div align="center">
+  <img src="assets/primary-logo.png" alt="Nyxora — Tactical Secrets Vault" width="460"/>
 
-# 🌌 NYXORA
+  <p><strong>Your passwords. Your machine. No cloud. No compromise.</strong></p>
 
-<p><b>Terminal-Native, Zero-Knowledge, Quantum-Resilient Password Intelligence Vault</b></p>
-
-  <img alt="Version" src="https://img.shields.io/badge/version-2.6.0-00FFFF?style=for-the-badge&logo=appveyor">
-  <img alt="Coverage" src="https://img.shields.io/badge/coverage-98%25-00FF41?style=for-the-badge&logo=pytest">
-  <img alt="Python" src="https://img.shields.io/badge/python-3.12--3.14-8B00FF?style=for-the-badge&logo=python">
-  ![CI](https://github.com/scorpiocodex/Nyxora/actions/workflows/ci.yml/badge.svg)
-
-```text
-███╗   ██╗██╗   ██╗██╗  ██╗ ██████╗ ██████╗  █████╗ 
-████╗  ██║╚██╗ ██╔╝╚██╗██╔╝██╔═══██╗██╔══██╗██╔══██╗
-██╔██╗ ██║ ╚████╔╝  ╚███╔╝ ██║   ██║██████╔╝███████║
-██║╚██╗██║  ╚██╔╝   ██╔██╗ ██║   ██║██╔══██╗██╔══██║
-██║ ╚████║   ██║   ██╔╝ ██╗╚██████╔╝██║  ██║██║  ██║
-╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-  [ O F F L I N E ] • [ Z E R O  K N O W L E D G E ] • [ T A C T I C A L  S E C R E T S  V A U L T ]
-```
-
-*Designed and engineered by [ScorpioCodeX](https://github.com/scorpiocodex)*
-
+  <p>
+    <a href="https://pypi.org/project/nyxora/"><img src="https://img.shields.io/pypi/v/nyxora?style=flat-square&color=C89A30&logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
+    <img src="https://img.shields.io/badge/python-3.12%2B-0080FF?style=flat-square&logo=python&logoColor=white" alt="Python">
+    <img src="https://github.com/scorpiocodex/Nyxora/actions/workflows/ci.yml/badge.svg" alt="CI">
+    <img src="https://img.shields.io/badge/coverage-81%25-00FF41?style=flat-square" alt="Coverage">
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-888780?style=flat-square" alt="Platform">
+    <img src="https://img.shields.io/badge/license-MIT-white?style=flat-square" alt="License">
+  </p>
 </div>
 
 ---
 
-**Nyxora** is a completely offline, ultra-hardened, command-line password manager. Built for power users, hackers, and security engineers who demand absolute control over their digital sovereignty. Keep your secrets out of the cloud and natively embedded in a high-octane cyberpunk terminal interface.
-
-No telemetry. No forced syncs. Just pure, mathematically resilient cryptographic storage.
-
-## 🛡️ Core Capabilities
-
-🌟 **Quantum-Resistant Foundations**
-Encrypts your local vault using memory-hard `Argon2id` for master key derivation, combined with `XChaCha20-Poly1305` authenticated encryption. It actively protects your keys from physical RAM attacks using native OS memory locking (`VirtualLock` on Windows, `mlock` on Linux).
-
-🌟 **Zero-Knowledge Architecture**
-Operates in a pure offline environment. The only outbound connection made is an optional lookup against the HaveIBeenPwned API utilizing k-anonymity (meaning only the first 5 characters of a hashed password leave your machine) for breach detection.
-
-🌟 **Cryptographic Recovery**
-Includes built-in support for Shamir's Secret Sharing (split the master key into multiple shards) and encrypted emergency recovery capsules to prevent catastrophic data loss.
-
-🌟 **Intel & Audit Engine**
-Provides deep pattern analysis and password strength auditing. Nyxora detects keyboard walks, repeated characters, common word bases, leet speak mappings, and password reuse across your entire local vault.
-
-🌟 **Import Intelligence**
-Bulk-import credentials from Bitwarden, 1Password, or any CSV export directly into the encrypted vault using `nyx vault import`. Supports auto-detection, dry-run preview, and format normalization.
-
-🌟 **Next-Generation Terminal UI**
-Visual entropy bars, live session dashboards, integrity checklists, and colour-coded audit summaries. Every interaction is information-dense and visually distinct.
-
-## 🚀 Installation 
-
-`Nyxora` isn't hosted on typical package indexes like PyPI to maintain strict, verifiable source derivation. You can install it directly from this GitHub repository using Python standards.
-
-### Option 1: Using pipx (Recommended)
-`pipx` ensures Nyxora is installed in an isolated environment but heavily available globally assigned to your `PATH`.
-
-```bash
-pipx install git+https://github.com/scorpiocodex/Nyxora.git
-```
-
-### Option 2: Using pip (Global or Virtual Environment)
-```bash
-python -m pip install git+https://github.com/scorpiocodex/Nyxora.git
-```
-
-### Option 3: Local Clone Development
-```bash
-git clone https://github.com/scorpiocodex/Nyxora.git
-cd Nyxora
-python -m pip install -e .
-```
+Nyxora is an offline password manager that runs entirely in your terminal.
+Your vault is stored on your machine, encrypted with military-grade cryptography —
+nothing ever leaves it. No accounts. No cloud. No subscriptions.
 
 ---
 
-## ⚡ Quick Start
+## Preview
 
-Experience next-generation CLI speed natively inside your terminal.
+![Nyxora TUI — Obsidian Tactical vault browser](assets/tui-screenshot.png)
+
+*`nyx tui` — interactive vault browser with live TOTP codes, strength ratings, and instant search*
+
+---
+
+## Install
+
+**Recommended — works on Windows and Linux:**
 
 ```bash
-# 1. Initialize your new encrypted vault infrastructure
+pipx install nyxora
+```
+
+**Standard pip:**
+
+```bash
+pip install nyxora
+```
+
+**Windows — no Python required:**
+
+Download `nyx.exe` from the [latest release](https://github.com/scorpiocodex/Nyxora/releases/latest)
+and run it from any terminal.
+
+---
+
+## Quick Start
+
+```bash
+# 1. Create your vault (one time only)
 nyx vault init
 
-# 2. Unlock and start a secured memory DPAPI keychain session
+# 2. Unlock it
 nyx vault unlock
 
-# 3. Generate a strong passphrase with visual entropy meter
-nyx generate passphrase --words 6 --count 3
+# 3. Add a password
+nyx secret add -t "GitHub" -u "your-username" --generate
 
-# 4. Import from Bitwarden export
-nyx vault import ~/bitwarden_export.json --format bitwarden
-
-# 5. Add a secret with auto-generation parameters
-nyx secret add --generate -t "GitHub" -u "cyber-ninja"
-
-# 6. Search and securely push the password to your clipboard
-nyx secret get "GitHub" --copy
-
-# 7. Launch the interactive vault browser
+# 4. Open the interactive browser
 nyx tui
+```
 
-# 8. Check for updates
-nyx update check
+That's it. Your vault is encrypted and stored locally at `~/.nyxora/vault.nyx`.
+
+---
+
+## What can Nyxora do?
+
+| | |
+|---|---|
+| 🔒 **Store secrets** | Passwords, usernames, URLs, notes, custom fields — all encrypted |
+| 🖥️ **Interactive TUI** | Visual vault browser with search, TOTP codes, and strength ratings |
+| 🛡️ **Security audit** | Scan for weak, reused, or breached passwords (via HaveIBeenPwned) |
+| 📋 **Clipboard** | Copy passwords to clipboard — auto-clears after 30 seconds |
+| 🔑 **Generator** | Passwords, passphrases, API keys, SSH keys with entropy analysis |
+| 🔐 **TOTP support** | Store 2FA secrets per entry — live codes shown in the TUI and CLI |
+| 📦 **Import** | Bring in passwords from Bitwarden, 1Password, or any CSV export |
+| 🔌 **Scripting** | Pipe credentials into scripts without exposing them in shell history |
+| 🐍 **Python SDK** | `from nyxora import VaultClient` — programmatic vault access |
+| 💾 **Backups** | Create, verify, and restore encrypted vault backups |
+| 🚨 **Emergency access** | Recovery capsules and Shamir secret sharing for catastrophic scenarios |
+
+---
+
+## Commands
+
+### Vault
+
+```bash
+nyx vault init              # create a new vault
+nyx vault unlock            # unlock your vault
+nyx vault lock              # lock and wipe session
+nyx vault status            # show vault status
+nyx vault change-password   # change master password
+nyx vault panic             # emergency wipe — destroys session immediately
+nyx vault profiles          # manage multiple vaults
+```
+
+### Secrets
+
+```bash
+nyx secret add              # add a new entry
+nyx secret list             # list all entries
+nyx secret get "GitHub"     # get an entry by title
+nyx secret get "GitHub" --copy   # copy password to clipboard
+nyx secret update "GitHub"  # update an entry
+nyx secret delete "GitHub"  # delete an entry
+nyx secret totp "GitHub"    # show live TOTP code
+nyx secret clone "GitHub"   # duplicate an entry
+nyx secret search "git"     # search by title, username, or URL
+```
+
+### Generate
+
+```bash
+nyx generate password                        # random password
+nyx generate password --length 32            # custom length
+nyx generate password --min-strength strong  # enforce strength
+nyx generate passphrase --words 6            # diceware passphrase
+nyx generate api-key --prefix NYX            # API key with prefix
+nyx generate entropy "hunter2"              # analyse any password
+```
+
+### Security
+
+```bash
+nyx security audit          # full vault audit
+nyx security audit --no-hibp    # skip breach check
+nyx security health         # vault health score (0–100)
+nyx security due            # passwords overdue for rotation
+nyx security log            # audit event history
+nyx security forensic       # full integrity verification
+```
+
+### Scripting
+
+```bash
+# Pipe a password to a command's stdin
+nyx script pipe "GitHub" -- some-command
+
+# Inject credentials as environment variables
+nyx script run "AWS" -- aws s3 ls
+
+# Fuzzy-find entries (requires fzf)
+nyx script fzf --copy
+
+# Machine-readable output
+nyx --json secret list
+nyx --json vault status
+```
+
+### Other
+
+```bash
+nyx backup create / list / verify / restore   # vault backups
+nyx locker encrypt <file>                     # encrypt any file
+nyx recovery status                           # check recovery setup
+nyx update check / install / rollback         # manage updates
+nyx tui                                       # interactive browser
 ```
 
 ---
 
-## 📚 Global Command Hierarchy
+## Security
 
-Nyxora organizes its massive array of tools into clear, structured sub-modules. Type `nyx --help` or `nyx <module> --help` to explore the beautifully-rendered terminal graphics describing each endpoint parameter.
+Nyxora is designed to keep your passwords secure even if your machine is compromised:
 
-### 🔑 Vault & Sessions
-* `nyx vault init` : Create the master SQLite database wrapper.
-* `nyx vault unlock` : Boot a localized secure vault session.
-* `nyx vault lock` : Securely halt background threads and terminate key mappings.
-* `nyx vault status` : View cryptographic limits, session timers, and configurations.
-* `nyx vault change-password` : Dynamically rotate the master derivation key sequence.
-* `nyx vault import` : Bulk-import entries from CSV, Bitwarden, or 1Password.
-* `nyx vault panic` : **Emergency Protocol**. Rapidly purge all RAM limits and shell bindings immediately.
-* `nyx vault profiles` / `nyx vault use <name>` : Manage named vault profiles.
-* `nyx update check/install/rollback` : Auto-updater with SHA-256 integrity verification.
+- **Argon2id** key derivation — memory-hard, resistant to brute force
+- **XChaCha20-Poly1305** encryption — authenticated, tamper-evident
+- **Per-entry HMAC** integrity checks — detects any modification
+- **Memory locking** — prevents keys from being swapped to disk
+- **Zero plaintext on disk** — every field is encrypted before storage
+- **Offline by default** — no network access except optional HIBP breach checks
 
-### 🔒 Secrets Engine
-* `nyx secret add` : Inject a new database item with associated URIs, notes, tags, and arbitrary `--custom` key=value fields.
-* `nyx secret get` : Securely retrieve existing entries and copy to local clipboards.
-* `nyx secret list` / `nyx secret search` : Iterate natively over large indexes safely visually.
-* `nyx secret update` : Manage and alter entry fields — supports `--tags` to replace tag sets and `--custom` field updates.
-* `nyx secret delete` : Remove entries with HMAC-verified soft deletion.
-
-### ⚡ Generators & Tools
-* `nyx generate password` : Emit highly entropic true-random sequences. Use `--min-strength` (weak/fair/strong/excellent) to enforce a minimum entropy threshold — regenerates up to 10 times to meet the target.
-* `nyx generate passphrase` : Assemble multi-word combinations sampled from the full 7,776-word EFF large wordlist. Use `--count/-n` to generate multiple passphrases in one call.
-* `nyx generate ssh-key` : Deploy native RSA/ED25519 payload creation (optionally encrypted).
-
-### 🛡️ Security & Intelligence
-* `nyx security audit` : Conduct a full vault scan for hash repetitions and structural entropy scores.
-* `nyx security hibp` : K-Anonymity hash validation against breach databases.
-* `nyx security log` : Cryptographically protected audit history tracing.
-
-### 💾 Resiliency & Backups
-* `nyx backup create` : Output `.nyx.bak` local vault snapshot copies.
-* `nyx backup restore` / `nyx backup verify` : Assure disk-level stability and rollback support.
-* `nyx backup export` : Dump vault items utilizing highly encrypted JSON constraints.
-
-### 🚑 Emergency Access
-* `nyx recovery setup-totp` : Deploy RFC-6238 Time-Based OTP secondary locks.
-* `nyx recovery capsule` : Seal offline break-glass root keys.
-* `nyx recovery split` / `nyx recovery combine` : Execute GF(256) Lagrange interpolation mathematics to split vault constraints into physical Shamir fragments.
-
-### 📁 File Locker
-* `nyx locker encrypt` / `nyx locker decrypt` : Bind arbitrary large files (`.pdf`, `.jpg`, `.txt`, `.mp4`) directly into strict encryption boundaries shielded by the vault's derived XChaCha keys.
-
-### 🔌 Scripting & Integration
-* `nyx script pipe <entry> -- <cmd>` : Pipe credential to command stdin without shell history exposure.
-* `nyx script run <entry> -- <cmd>` : Inject credentials as env vars (`NYX_PASSWORD`, `NYX_USERNAME`, `NYX_URL`, custom fields).
-* `nyx script fzf` : Fuzzy-find entries with fzf — `--field`, `--copy`, `--show`, `--json` output modes.
-* `nyx --json <command>` : Machine-readable JSON output for any command (secret get/list/search, vault status, generate).
-* `from nyxora import VaultClient` : Python SDK for programmatic access — context manager, CRUD, TOTP, health score.
-
-### 🖥️ Interactive
-* `nyx tui` : Obsidian Tactical vault browser — j/k navigation, live search overlay, detail panel with TOTP countdown, audit dashboard.
+Read [SECURITY.md](SECURITY.md) for the full security policy and responsible disclosure process.
 
 ---
 
-## 🏗️ Execution Architecture
+## Python SDK
 
-```mermaid
-graph TD
-    CLI[Nyxora CLI Typer Engine] --> Core[Command Handlers]
-    Core --> SM[Session Manager DPAPI Keyring]
-    Core --> VS[Vault Store SQLite]
-    Core --> CE[Crypto Engine AEAD]
-    Core --> IE[Intel Engine HIBP APIs]
-    CE --> MG[Memory Guard VirtualLock/mlock]
-    SM --> MG
-    VS --> CE
-    IE --> CE
+```python
+from nyxora import VaultClient
+
+with VaultClient(vault_path="~/.nyxora/vault.nyx",
+                 password="your-master-password") as client:
+    entry = client.get("GitHub")
+    print(entry.password)
+
+    totp_code = client.get_totp("GitHub")
+    score = client.health()
+    print(f"Vault health: {score.grade} ({score.total}/100)")
 ```
+
+---
+
+## Requirements
+
+- Python 3.12 or later (not needed for Windows `.exe`)
+- Windows 10+ or Linux
+- macOS — works but not officially tested
+
+---
+
+## Contributing
+
+Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
 <div align="center">
-  <sub><b>Nyxora v2.6.0</b> ◦ Developed by ScorpioCodeX ◦ Under MIT License</sub>
+  <sub>
+    Built by <a href="https://github.com/scorpiocodex">ScorpioCodeX</a> ·
+    <a href="https://github.com/scorpiocodex/Nyxora/releases">Releases</a> ·
+    <a href="CHANGELOG.md">Changelog</a> ·
+    MIT License
+  </sub>
 </div>
