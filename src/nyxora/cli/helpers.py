@@ -18,7 +18,43 @@ SERVICE_NAME = "nyxora_vault_session"
 
 
 SESSION_FILE = Path.home() / ".nyxora" / "session.json"
+SESSION_KEY_FILE = Path.home() / ".nyxora" / "session.key"
 PROFILES_FILE = Path.home() / ".nyxora" / "profiles.json"
+
+
+def _save_key_fallback(session_id: str, root_key_hex: str) -> None:
+    """Fallback key storage for Linux systems without a keyring daemon.
+    Stores the session key as a 0o600 file — less secure than DPAPI
+    but better than failing entirely.
+    """
+    SESSION_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    import json as _json
+    data = _json.dumps({"session_id": session_id, "key": root_key_hex})
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOINHERIT"):
+        flags |= getattr(os, "O_NOINHERIT")
+    fd = os.open(str(SESSION_KEY_FILE), flags, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(data)
+
+
+def _load_key_fallback(session_id: str) -> str | None:
+    """Load key from fallback file storage."""
+    if not SESSION_KEY_FILE.exists():
+        return None
+    try:
+        import json as _json
+        data = _json.loads(SESSION_KEY_FILE.read_text(encoding="utf-8"))
+        if data.get("session_id") == session_id:
+            return data.get("key")
+    except Exception:
+        pass
+    return None
+
+
+def _clear_key_fallback() -> None:
+    """Remove fallback key file."""
+    SESSION_KEY_FILE.unlink(missing_ok=True)
 
 
 def get_vault_path(config: Config) -> Path:
@@ -43,18 +79,30 @@ def save_session(session_id: str, vault_path: str, root_key_hex: str) -> None:
         "vault_path": vault_path,
     })
 
+    _keyring_ok = False
     try:
         keyring.set_password(SERVICE_NAME, session_id, root_key_hex)
-    except Exception as e:  # pragma: no cover
-        ui.error_panel(  # pragma: no cover
-            f"Failed to securely store session key in OS keyring: {e}\n\n"
-            f"On Linux, install a keyring backend:\n"
-            f"  pip install keyrings.alt          (simple file-based, works everywhere)\n"
-            f"  sudo apt install gnome-keyring    (recommended for desktop Linux)\n\n"
-            f"On Windows, this should work automatically via DPAPI.",
-            title="Keyring Error"
-        )  # pragma: no cover
-        raise typer.Exit(1)  # pragma: no cover
+        _keyring_ok = True
+    except Exception:
+        pass
+
+    if not _keyring_ok:  # pragma: no cover
+        import platform  # pragma: no cover
+        if platform.system() == "Linux":  # pragma: no cover
+            _save_key_fallback(session_id, root_key_hex)  # pragma: no cover
+            ui.warning_panel(  # pragma: no cover
+                "OS keyring unavailable — session key stored in encrypted file.\n"
+                "For better security, install: sudo apt install gnome-keyring\n"
+                "or run: eval $(gnome-keyring-daemon --start) before using Nyxora.",
+                title="Keyring Fallback Active"
+            )  # pragma: no cover
+        else:  # pragma: no cover
+            ui.error_panel(  # pragma: no cover
+                f"Failed to securely store session key in OS keyring.\n"
+                f"On Windows this should not happen — check DPAPI is available.",
+                title="Keyring Error"
+            )  # pragma: no cover
+            raise typer.Exit(1)  # pragma: no cover
 
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
     if hasattr(os, "O_NOINHERIT"):
@@ -78,6 +126,8 @@ def load_session() -> tuple[str, Path, bytearray] | None:
         vault_path = Path(data["vault_path"])
 
         root_key_hex = keyring.get_password(SERVICE_NAME, session_id)
+        if not root_key_hex:
+            root_key_hex = _load_key_fallback(session_id)
         if not root_key_hex:
             return None
 
@@ -103,6 +153,7 @@ def clear_session() -> None:
         except Exception:  # pragma: no cover
             pass  # pragma: no cover
         SESSION_FILE.unlink(missing_ok=True)
+    _clear_key_fallback()
 
 
 def load_profiles() -> dict:
