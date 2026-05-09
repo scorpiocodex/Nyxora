@@ -85,7 +85,7 @@ class VaultBrowserScreen(Screen):
             or any(q in t.lower() for t in e.tags)
         ]
 
-    def _populate_list(self, entries: list[EntryRecord]) -> None:
+    def _populate_list(self, entries: list) -> None:
         lv = self.query_one("#entry-list", ListView)
         lv.clear()
         for entry in entries:
@@ -94,6 +94,11 @@ class VaultBrowserScreen(Screen):
             lv.index = 0
             self._selected_id = entries[0].id
             self._render_detail(entries[0])
+        else:
+            self._selected_id = None
+            self.query_one("#detail-content", Static).update(
+                "[#344252]No entries.[/#344252]"
+            )
 
     @on(ListView.Highlighted, "#entry-list")
     def entry_highlighted(self, event: ListView.Highlighted) -> None:

@@ -35,6 +35,7 @@ class NyxoraApp(App):
         self._entries = entries
         self._vault_path = vault_path
         self._session_id = session_id
+        self._pending_delete_id: str | None = None
 
     def on_mount(self) -> None:
         from nyxora.tui.screens.vault_browser import VaultBrowserScreen
@@ -98,15 +99,67 @@ class NyxoraApp(App):
 
     def action_delete_entry(self) -> None:
         b = self._get_browser()
-        if b:
-            record = b._get_selected()
-            if record:
-                self.notify(
-                    f"Delete '{record.title}'? Press D again to confirm.",
-                    title="Confirm Delete",
-                    severity="warning",
-                    timeout=3,
+        if not b:
+            return
+        record = b._get_selected()
+        if not record:
+            return
+
+        if self._pending_delete_id == record.id:
+            # Second press — actually delete
+            self._pending_delete_id = None
+            try:
+                from nyxora.cli.helpers import load_session
+                from nyxora.core.vault_store import VaultStore
+                from nyxora.core.crypto_engine import CryptoEngine
+                from nyxora.core.memory_guard import wipe_memory
+
+                session = load_session()
+                if session is None:
+                    self.notify("Vault locked.", severity="error")
+                    return
+                _, vault_path, root_key = session
+                engine = CryptoEngine(
+                    argon2_memory=65536, argon2_time=1, argon2_parallelism=1
                 )
+                store = VaultStore(engine)
+                try:
+                    store.open(vault_path, root_key)
+                    store.delete_entry(record.id)
+                    store.close()
+                finally:
+                    wipe_memory(root_key)
+
+                # Remove from in-memory list and refresh
+                b._all_entries = [
+                    e for e in b._all_entries if e.id != record.id
+                ]
+                b._populate_list(b._filtered_entries())
+                self.notify(
+                    f"'{record.title}' deleted.",
+                    title="Deleted",
+                    severity="warning",
+                )
+            except Exception as e:
+                self.notify(str(e), title="Delete Failed", severity="error")
+        else:
+            # First press — set pending and notify
+            self._pending_delete_id = record.id
+            self.notify(
+                f"Delete '{record.title}'? Press D again to confirm.",
+                title="Confirm Delete",
+                severity="warning",
+                timeout=4,
+            )
+
+            # Auto-cancel pending delete after 4 seconds
+            import threading
+            def _cancel():
+                import time
+                time.sleep(4)
+                if self._pending_delete_id == record.id:
+                    self._pending_delete_id = None
+            threading.Thread(target=_cancel, daemon=True).start()
 
     def action_profiles(self) -> None:
         b = self._get_browser()
