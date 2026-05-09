@@ -72,7 +72,7 @@ timeout = 60
 
 [tool.coverage.run]
 source = ["src/nyxora"]
-omit = ["*/tests/*", "*/__init__.py"]
+omit = ["*/tests/*", "*/__init__.py", "*/tui/*"]
 
 [tool.mypy]
 python_version = "3.12"

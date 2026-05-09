@@ -19,6 +19,7 @@ from nyxora.cli.commands import (
     scripting,
     secret,
     security,
+    tui_cmd,
     update,
     vault,
 )
@@ -65,6 +66,12 @@ app.add_typer(
     name="script",
     help="[bold]Scripting tools[/]: pipe, run, fzf integration.",
     rich_help_panel="⚙️  Scripting & Integration"
+)
+app.add_typer(
+    tui_cmd.app,
+    name="tui",
+    help="[bold]Interactive vault browser[/] — Obsidian Tactical TUI.",
+    rich_help_panel="🖥️  Interactive"
 )
 
 

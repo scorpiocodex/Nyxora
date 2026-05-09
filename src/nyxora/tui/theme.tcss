@@ -1,0 +1,249 @@
+/* ── Obsidian Tactical — NYXORA TUI Theme ─────────────────────────── */
+
+Screen {
+    background: #0B0D12;
+}
+
+/* ── Layout containers ─────────────────────────────────────────────── */
+
+#app-grid {
+    layout: grid;
+    grid-size: 2;
+    grid-columns: 28 1fr;
+    grid-rows: 1fr;
+    height: 1fr;
+}
+
+#left-panel {
+    background: #0B0D12;
+    border-right: tall #1A2430;
+    height: 100%;
+}
+
+#right-panel {
+    background: #0B0D12;
+    padding: 0 2;
+    height: 100%;
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+
+#tui-header {
+    height: 1;
+    background: #0F1218;
+    border-bottom: tall #1A2430;
+    color: #C89A30;
+    text-style: bold;
+    padding: 0 1;
+}
+
+/* ── Entry list ────────────────────────────────────────────────────── */
+
+#panel-title {
+    height: 1;
+    background: #0D1016;
+    border-bottom: tall #1A2430;
+    color: #C89A30;
+    text-style: bold;
+    padding: 0 1;
+}
+
+#search-bar {
+    height: 1;
+    background: #0B0D12;
+    border-bottom: tall #1A2430;
+    color: #C89A30;
+    padding: 0 1;
+}
+
+#search-input {
+    background: #0B0D12;
+    border: none;
+    color: #E8D5A8;
+    height: 1;
+    width: 1fr;
+}
+
+#search-input:focus {
+    border: none;
+    background: #0D0A00;
+}
+
+ListView {
+    background: #0B0D12;
+    border: none;
+    height: 1fr;
+    padding: 0;
+}
+
+ListItem {
+    background: #0B0D12;
+    border-left: tall transparent;
+    padding: 0 1;
+    height: 2;
+}
+
+ListItem:hover {
+    background: #0D1016;
+}
+
+ListItem.--highlight {
+    background: #111500;
+    border-left: tall #C89A30;
+}
+
+ListItem.--highlight > .entry-title {
+    color: #E8D5A8;
+    text-style: bold;
+}
+
+.entry-title {
+    color: #6A7A88;
+}
+
+.entry-sub {
+    color: #344252;
+}
+
+/* ── Detail panel ──────────────────────────────────────────────────── */
+
+#detail-scroll {
+    height: 1fr;
+    background: #0B0D12;
+}
+
+#detail-content {
+    padding: 1 2;
+    background: #0B0D12;
+    color: #8A9AA8;
+    height: auto;
+}
+
+#detail-title {
+    color: #C89A30;
+    text-style: bold;
+    height: 1;
+    padding: 0 0 1 0;
+}
+
+.field-label {
+    color: #344252;
+    width: 12;
+}
+
+.field-value {
+    color: #A8B8C8;
+}
+
+.field-value.password {
+    color: #445462;
+}
+
+.field-value.url {
+    color: #3A7A9A;
+}
+
+.field-value.totp {
+    color: #2A7A4A;
+    text-style: bold;
+}
+
+.field-value.strength-excellent {
+    color: #2A7A4A;
+}
+
+.field-value.strength-strong {
+    color: #3A7A9A;
+}
+
+.field-value.strength-fair {
+    color: #C89A30;
+}
+
+.field-value.strength-weak {
+    color: #CC3333;
+}
+
+/* ── Action bar ────────────────────────────────────────────────────── */
+
+#action-bar {
+    height: 1;
+    background: #0D1016;
+    border-top: tall #1A2430;
+    color: #2E3C4A;
+    padding: 0 1;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────── */
+
+Footer {
+    background: #080A0E;
+    border-top: tall #141C24;
+    color: #2E3C4A;
+}
+
+Footer > .footer--key {
+    background: #0D0A00;
+    color: #C89A30;
+}
+
+/* ── Search overlay ────────────────────────────────────────────────── */
+
+SearchScreen {
+    align: center top;
+    background: rgba(0,0,0,0);
+}
+
+#search-overlay {
+    background: #0F1218;
+    border: tall #C89A30;
+    width: 60;
+    height: auto;
+    margin-top: 2;
+    padding: 1 2;
+}
+
+/* ── Audit screen ──────────────────────────────────────────────────── */
+
+#audit-grid {
+    layout: grid;
+    grid-size: 2;
+    grid-columns: 22 1fr;
+    gap: 1 2;
+    padding: 1 2;
+}
+
+#health-panel {
+    background: #0D1016;
+    border: tall #1A2430;
+    height: 12;
+    padding: 1;
+    text-align: center;
+}
+
+#health-score {
+    color: #C89A30;
+    text-style: bold;
+    text-align: center;
+}
+
+#stats-grid {
+    layout: grid;
+    grid-size: 3;
+    gap: 1;
+}
+
+.stat-card {
+    background: #0D1016;
+    border: tall #1A2430;
+    padding: 1;
+    height: 5;
+}
+
+.stat-number {
+    text-style: bold;
+}
+
+.stat-label {
+    color: #344252;
+}
