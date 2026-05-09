@@ -64,3 +64,5 @@ Thumbs.db
 scripts_build/
 nyxora_windows.spec
 assets/nyxora_icon.ico
+build_release.py
+_tmp_build.spec
