@@ -86,7 +86,17 @@ def unlock(
             except NyxoraError as e:
                 _session.record_failed_attempt()
                 wipe_memory(root_key)
-                ui.error_panel(e.user_message)
+                # IntegrityError on open almost always means wrong password,
+                # not actual tampering — give the user an accurate message.
+                from nyxora.utils.exceptions import IntegrityError as _IE
+                if isinstance(e, _IE):
+                    ui.error_panel(
+                        "Wrong password or corrupted vault.\n"
+                        "If you are sure the password is correct, run "
+                        "'nyx vault health-check' to inspect vault integrity."
+                    )
+                else:
+                    ui.error_panel(e.user_message)
                 raise typer.Exit(1)
             store.close()
             _session.unlock(root_key, session_token)
