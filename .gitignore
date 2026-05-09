@@ -59,3 +59,8 @@ Thumbs.db
 !src/nyxora/data/*.txt
 *.bak
 .claude/
+
+# Local build tooling (not for public repo)
+scripts_build/
+nyxora_windows.spec
+assets/nyxora_icon.ico
