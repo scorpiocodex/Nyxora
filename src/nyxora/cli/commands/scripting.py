@@ -20,6 +20,20 @@ app = typer.Typer(
 _engine = CryptoEngine()
 
 
+def _resolve_entry(store, entry_id: str):  # pragma: no cover
+    """Resolve entry by UUID first, then by title search fallback."""
+    from nyxora.utils.exceptions import EntryNotFoundError
+    try:
+        return store.get_entry(entry_id)
+    except EntryNotFoundError:
+        results = store.search_entries(entry_id)
+        if not results:
+            raise EntryNotFoundError(
+                f"Entry '{entry_id}' not found by ID or title."
+            )
+        return results[0]
+
+
 @app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
@@ -47,7 +61,7 @@ def pipe(
     store, _, root_key, _ = open_vault(_engine)
     secret = None
     try:
-        record = store.get_entry(entry_id)
+        record = _resolve_entry(store, entry_id)
         if field == "password":
             secret = record.password
         elif field == "username":
@@ -120,7 +134,7 @@ def run(
     store, _, root_key, _ = open_vault(_engine)
     env_extras: dict[str, str] = {}
     try:
-        record = store.get_entry(entry_id)
+        record = _resolve_entry(store, entry_id)
         pfx = prefix.upper().rstrip("_")
         env_extras[f"{pfx}_PASSWORD"] = record.password
         if record.username:
@@ -225,7 +239,7 @@ def fzf(
             raise typer.Exit(0)
         entry_id = parts[2]
 
-        record = store.get_entry(entry_id)
+        record = _resolve_entry(store, entry_id)
 
         if json_out:
             from nyxora.cli.ui import json_out as _json_out
