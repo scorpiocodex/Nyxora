@@ -209,7 +209,7 @@ SearchScreen {
     layout: grid;
     grid-size: 2;
     grid-columns: 22 1fr;
-    gap: 1 2;
+    grid-gutter: 1;
     padding: 1 2;
 }
 
@@ -230,7 +230,7 @@ SearchScreen {
 #stats-grid {
     layout: grid;
     grid-size: 3;
-    gap: 1;
+    grid-gutter: 1;
 }
 
 .stat-card {
