@@ -36,6 +36,35 @@ def setup() -> None:
     token = questionary.text("Enter the 6-digit code from your app to verify:").ask()  # pragma: no cover
     if _recovery.verify_totp(token or "", secret):  # pragma: no cover
         ui.success_panel("TOTP verified successfully.")  # pragma: no cover
+        # Persist TOTP secret to vault metadata
+        try:  # pragma: no cover
+            from nyxora.cli.helpers import load_session  # pragma: no cover
+            from nyxora.core.vault_store import VaultStore  # pragma: no cover
+            from nyxora.core.crypto_engine import CryptoEngine  # pragma: no cover
+            from nyxora.core.memory_guard import wipe_memory as _wipe  # pragma: no cover
+  # pragma: no cover
+            _session = load_session()  # pragma: no cover
+            if _session is not None:  # pragma: no cover
+                _, _vp, _rk = _session  # pragma: no cover
+                _engine_inner = CryptoEngine()  # pragma: no cover
+                _store = VaultStore(_engine_inner)  # pragma: no cover
+                try:  # pragma: no cover
+                    _store.open(_vp, _rk)  # pragma: no cover
+                    _store.set_metadata_value("totp_secret", secret)  # pragma: no cover
+                    _store.close()  # pragma: no cover
+                    ui.info_panel(  # pragma: no cover
+                        "TOTP secret saved to vault.\n"  # pragma: no cover
+                        "Run 'nyx recovery status' to verify.",  # pragma: no cover
+                        title="TOTP Persisted"  # pragma: no cover
+                    )  # pragma: no cover
+                finally:  # pragma: no cover
+                    _wipe(_rk)  # pragma: no cover
+        except Exception as _e:  # pragma: no cover
+            ui.warning_panel(  # pragma: no cover
+                f"TOTP verified but could not save to vault: {_e}\n"  # pragma: no cover
+                "Store the secret manually.",  # pragma: no cover
+                title="Persistence Warning"  # pragma: no cover
+            )  # pragma: no cover
     else:  # pragma: no cover
         ui.error_panel("Invalid TOTP token. Setup incomplete.")  # pragma: no cover
         raise typer.Exit(1)  # pragma: no cover
@@ -139,7 +168,7 @@ def status() -> None:
         totp_configured = False
 
     nyxora_dir = Path.home() / ".nyxora"
-    capsule_files = [p.name for p in nyxora_dir.glob("*.capsule")] if nyxora_dir.exists() else []
-    share_files = [p.name for p in nyxora_dir.glob("share_*.bin")] if nyxora_dir.exists() else []
+    capsule_files = [p.name for p in nyxora_dir.rglob("*.capsule")] if nyxora_dir.exists() else []
+    share_files = [p.name for p in nyxora_dir.rglob("share_*.bin")] if nyxora_dir.exists() else []
 
     recovery_status_panel(totp_configured, capsule_files, share_files)
