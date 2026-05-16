@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.2] - 2026-05-13
+
+### Fixed
+- **Recovery TOTP persistence** — `nyx recovery setup` now saves the TOTP
+  secret to vault metadata after successful verification, so
+  `nyx recovery status` correctly shows ✓ TOTP two-factor authentication
+- **Recovery status detection** — `nyx recovery status` now uses recursive
+  glob (rglob) to find capsule files and Shamir share files in subdirectories
+  under ~/.nyxora/, not just the top-level directory
+
+### Added
+- **QR code in terminal** — `nyx recovery setup` now renders the TOTP QR
+  code directly in the terminal as Unicode block characters so users can
+  scan with any authenticator app without manually typing the URI.
+  Falls back to URI display if qrcode package is unavailable.
+
+### Dependencies
+- Added `qrcode>=7.4.2` to package dependencies
+
+---
+
 ## [2.6.1] - 2026-05-10
 
 ### Fixed
