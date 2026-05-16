@@ -38,6 +38,7 @@ dependencies = [
     "keyring>=24.0.0",
     "textual>=0.47.0",
     "packaging>=23.0",
+    "qrcode>=7.4.2",
 ]
 
 [project.urls]

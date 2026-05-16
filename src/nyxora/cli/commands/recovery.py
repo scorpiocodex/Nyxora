@@ -33,6 +33,49 @@ def setup() -> None:
         title="TOTP Setup"  # pragma: no cover
     )  # pragma: no cover
   # pragma: no cover
+    # Try to render QR code in terminal
+    try:  # pragma: no cover
+        import qrcode  # pragma: no cover
+        from qrcode.constants import ERROR_CORRECT_L  # pragma: no cover
+        qr = qrcode.QRCode(  # pragma: no cover
+            version=1,  # pragma: no cover
+            error_correction=ERROR_CORRECT_L,  # pragma: no cover
+            box_size=1,  # pragma: no cover
+            border=1,  # pragma: no cover
+        )  # pragma: no cover
+        qr.add_data(uri)  # pragma: no cover
+        qr.make(fit=True)  # pragma: no cover
+  # pragma: no cover
+        # Render as ASCII to terminal
+        from nyxora.cli.ui import console  # pragma: no cover
+        console.print()  # pragma: no cover
+        console.print(  # pragma: no cover
+            "  [bold #C89A30]Scan with your authenticator app:[/bold #C89A30]"  # pragma: no cover
+        )  # pragma: no cover
+        console.print()  # pragma: no cover
+  # pragma: no cover
+        # Build QR as string matrix and print with Unicode blocks
+        matrix = qr.get_matrix()  # pragma: no cover
+        for row in matrix:  # pragma: no cover
+            line = "  "  # pragma: no cover
+            for cell in row:  # pragma: no cover
+                line += "██" if cell else "  "  # pragma: no cover
+            console.print(line)  # pragma: no cover
+  # pragma: no cover
+        console.print()  # pragma: no cover
+        console.print(  # pragma: no cover
+            "  [#888780]Or enter the secret manually: "  # pragma: no cover
+            f"[bold]{secret}[/bold][/#888780]"  # pragma: no cover
+        )  # pragma: no cover
+        console.print()  # pragma: no cover
+  # pragma: no cover
+    except ImportError:  # pragma: no cover
+        # qrcode not installed — fall back to URI display only
+        ui.warning_panel(  # pragma: no cover
+            "Install 'qrcode' for QR code rendering: pip install qrcode",  # pragma: no cover
+            title="QR Code Unavailable"  # pragma: no cover
+        )  # pragma: no cover
+  # pragma: no cover
     token = questionary.text("Enter the 6-digit code from your app to verify:").ask()  # pragma: no cover
     if _recovery.verify_totp(token or "", secret):  # pragma: no cover
         ui.success_panel("TOTP verified successfully.")  # pragma: no cover
