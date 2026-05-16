@@ -954,6 +954,17 @@ class VaultStore:
         ).fetchone()
         return row["value"] if row else ""
 
+    def set_metadata_value(self, key: str, value: str) -> None:
+        """Insert or update a key-value pair in the metadata table."""
+        if self._conn is None:
+            raise VaultError("Vault is not open.")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO metadata (key, value) VALUES (?, ?)"
+                " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
+
     def get_metadata_value(self, key: str) -> str | None:
         """Return a metadata value by key, or None if not found."""
         conn, _, _ = self._require_open()

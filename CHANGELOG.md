@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.4] - 2026-05-13
+
+### Fixed
+- **VaultStore.set_metadata_value** — method was missing, causing TOTP
+  secret persistence to fail with AttributeError after setup verification
+- **Recovery QR code** — now renders using solid block characters (██) with
+  explicit black foreground on white background across the entire row,
+  producing a correctly scannable dark-on-light QR code in Windows Terminal,
+  PowerShell, and any ANSI terminal
+
+---
+
 ## [2.6.3] - 2026-05-13
 
 ### Fixed

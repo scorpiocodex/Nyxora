@@ -1,6 +1,6 @@
 """NYXORA — Terminal-native, offline, zero-knowledge, quantum-resilient password vault."""
 
-__version__ = "2.6.3"
+__version__ = "2.6.4"
 __author__ = "ScorpioCodeX"
 __license__ = "MIT"
 

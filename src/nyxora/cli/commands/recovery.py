@@ -58,12 +58,13 @@ def setup() -> None:
         # backgrounds so scanners get dark-on-light (required for scanning)
         matrix = qr.get_matrix()  # pragma: no cover
         for row in matrix:  # pragma: no cover
-            line = "  "  # pragma: no cover
+            line = "[on white]  "  # pragma: no cover
             for cell in row:  # pragma: no cover
                 if cell:  # pragma: no cover
-                    line += "[on black]  [/on black]"  # dark module  # pragma: no cover
+                    line += "[black on white]██[/black on white]"  # pragma: no cover
                 else:  # pragma: no cover
-                    line += "[on white]  [/on white]"  # light module  # pragma: no cover
+                    line += "[white on white]  [/white on white]"  # pragma: no cover
+            line += "  [/on white]"  # pragma: no cover
             console.print(line)  # pragma: no cover
   # pragma: no cover
         console.print()  # pragma: no cover
