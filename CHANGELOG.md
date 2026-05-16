@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.3] - 2026-05-13
+
+### Fixed
+- **Recovery QR code scanning** — QR code now renders with explicit black
+  module on white background (dark-on-light) instead of the inverted
+  terminal-color rendering that prevented camera scanning. Quiet zone
+  border increased from 1 to 2 for better scanner lock-on.
+
+---
+
 ## [2.6.2] - 2026-05-13
 
 ### Fixed

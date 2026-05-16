@@ -41,7 +41,7 @@ def setup() -> None:
             version=1,  # pragma: no cover
             error_correction=ERROR_CORRECT_L,  # pragma: no cover
             box_size=1,  # pragma: no cover
-            border=1,  # pragma: no cover
+            border=2,  # pragma: no cover
         )  # pragma: no cover
         qr.add_data(uri)  # pragma: no cover
         qr.make(fit=True)  # pragma: no cover
@@ -54,12 +54,16 @@ def setup() -> None:
         )  # pragma: no cover
         console.print()  # pragma: no cover
   # pragma: no cover
-        # Build QR as string matrix and print with Unicode blocks
+        # Build QR as string matrix and print with explicit black/white
+        # backgrounds so scanners get dark-on-light (required for scanning)
         matrix = qr.get_matrix()  # pragma: no cover
         for row in matrix:  # pragma: no cover
             line = "  "  # pragma: no cover
             for cell in row:  # pragma: no cover
-                line += "██" if cell else "  "  # pragma: no cover
+                if cell:  # pragma: no cover
+                    line += "[on black]  [/on black]"  # dark module  # pragma: no cover
+                else:  # pragma: no cover
+                    line += "[on white]  [/on white]"  # light module  # pragma: no cover
             console.print(line)  # pragma: no cover
   # pragma: no cover
         console.print()  # pragma: no cover
