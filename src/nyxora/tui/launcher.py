@@ -1,0 +1,72 @@
+"""
+Nyxora TUI Launcher — exe/app entry point.
+
+When nyx.exe is opened directly (double-clicked or run from terminal
+without subcommands), this module routes to the correct screen:
+  - No vault found  → CreateVaultScreen (full TUI wizard)
+  - Vault locked    → UnlockScreen
+  - Vault unlocked  → MainApp with ManageScreen active
+
+This file is the PyInstaller entry point. The CLI (main.py) is unchanged.
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+
+def get_default_vault_path() -> Path:
+    """Return the default vault path (~/.nyxora/vault.nyx)."""
+    return Path.home() / ".nyxora" / "vault.nyx"
+
+
+def vault_exists() -> bool:
+    """Check whether the default vault file exists."""
+    return get_default_vault_path().exists()
+
+
+def is_vault_unlocked() -> bool:
+    """Check whether there is an active session for the default vault."""
+    try:
+        from nyxora.cli.helpers import load_session
+        session = load_session()
+        if session is None:
+            return False
+        _, vault_path, _ = session
+        from pathlib import Path as _Path
+        return _Path(vault_path).resolve() == get_default_vault_path().resolve()
+    except Exception:
+        return False
+
+
+def run_app() -> None:
+    """
+    Entry point called by the exe.
+    Routes to the appropriate TUI screen based on vault state.
+    """
+    try:
+        from nyxora.tui.app import NyxoraApp
+        app = NyxoraApp(
+            start_screen=_resolve_start_screen(),
+            exe_mode=True,
+        )
+        app.run()
+    except Exception as exc:
+        print(f"\n  ◆ NYXORA — startup error: {exc}\n", file=sys.stderr)
+        sys.exit(1)
+
+
+def _resolve_start_screen() -> str:
+    """
+    Determine which screen to show on startup.
+    Returns one of: 'create', 'unlock', 'manage'
+    """
+    if not vault_exists():
+        return "create"
+    if is_vault_unlocked():
+        return "manage"
+    return "unlock"
+
+
+if __name__ == "__main__":
+    run_app()
