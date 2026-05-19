@@ -86,6 +86,21 @@ def test_vault_screen_instantiation():
     assert screen is not None
 
 
+def test_manage_screen_instantiation():
+    """ManageScreen can be created without errors."""
+    from nyxora.tui.screens.manage import ManageScreen
+    screen = ManageScreen()
+    assert screen is not None
+
+
+def test_entry_item_instantiation():
+    """EntryItem can be created from an EntryRecord."""
+    from nyxora.tui.screens.manage import EntryItem
+    entries = _make_entries()
+    item = EntryItem(entries[0])
+    assert item.record.title == "GitHub"
+
+
 def test_tui_cmd_no_textual(monkeypatch):
     """tui command handles missing textual gracefully."""
     import builtins
