@@ -79,6 +79,13 @@ def test_create_vault_screen_instantiation():
     assert screen is not None
 
 
+def test_vault_screen_instantiation():
+    """VaultScreen can be created without errors."""
+    from nyxora.tui.screens.vault import VaultScreen
+    screen = VaultScreen()
+    assert screen is not None
+
+
 def test_tui_cmd_no_textual(monkeypatch):
     """tui command handles missing textual gracefully."""
     import builtins
