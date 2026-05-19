@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.containers import Horizontal, Vertical
 from textual.widgets import (
     ContentSwitcher,
     Footer,
@@ -246,11 +246,26 @@ class NyxoraApp(App):
 
     def action_quit(self) -> None:
         if self.exe_mode:
-            # In exe mode, lock the vault before quitting
             try:
-                from nyxora.core.session_core import SessionManager
-                sm = SessionManager()
-                sm.terminate_session()
+                from nyxora.cli.helpers import load_session
+                from nyxora.core.memory_guard import wipe_memory
+                import keyring as _kr
+
+                session = load_session()
+                if session is not None:
+                    _, _vp, _rk = session
+                    wipe_memory(_rk)
+
+                try:
+                    _kr.delete_password("nyxora", "session")
+                except Exception:
+                    pass
+
+                from pathlib import Path as _Path
+                session_file = _Path.home() / ".nyxora" / "session.key"
+                if session_file.exists():
+                    session_file.unlink(missing_ok=True)
+
             except Exception:
                 pass
         self.exit()
