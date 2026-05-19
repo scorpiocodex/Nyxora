@@ -1,174 +1,264 @@
-"""NYXORA Textual TUI application."""
+"""
+Nyxora TUI v3.0.0 "Nexus" — NyxoraApp shell.
+
+Layout:
+    ┌─────────────────────────────────────────────────┐
+    │  ◆ NYXORA  Tactical Secrets Vault  v{ver}  [■]  │  ← header (1 row)
+    ├───────────┬─────────────────────────────────────┤
+    │ NAVIGATE  │                                     │
+    │ > 1 Vault │         Workspace content           │
+    │   2 Manage│         (ContentSwitcher)           │
+    │   3 Backup│                                     │
+    │   4 Recov.│                                     │
+    │   5 Update│                                     │
+    │   6 Genera│                                     │
+    │   7 Securi│                                     │
+    │───────────│                                     │
+    │ v{ver}    │                                     │
+    └───────────┴─────────────────────────────────────┘
+"""
 from __future__ import annotations
 
-from pathlib import Path
-
-from textual.app import App
+from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.widgets import (
+    ContentSwitcher,
+    Footer,
+    Label,
+    ListItem,
+    ListView,
+    Static,
+)
 
-from nyxora.core.vault_store import EntryRecord
+from nyxora import __version__
 
+
+# ── Placeholder screen shown before real screens are wired ──────
+
+class PlaceholderScreen(Static):
+    """Temporary placeholder — replaced in Prompt 12 wiring step."""
+    def __init__(self, name: str, **kwargs) -> None:
+        super().__init__(
+            f"\n  ◆ {name.upper()}  —  Coming in v3.0.0 Nexus\n",
+            **kwargs,
+        )
+
+
+# ── Sidebar nav item ─────────────────────────────────────────────
+
+class NavItem(ListItem):
+    """A single sidebar navigation entry."""
+
+    def __init__(self, key: str, label: str, screen_id: str) -> None:
+        self._key = key
+        self._label = label
+        self._screen_id = screen_id
+        super().__init__(
+            Label(f" {key}  {label}", classes="nav-label"),
+            id=f"nav-{screen_id}",
+        )
+        self.screen_id = screen_id
+
+
+# ── Main application ─────────────────────────────────────────────
 
 class NyxoraApp(App):
-    """NYXORA Obsidian Tactical — interactive vault browser."""
+    """
+    Nyxora v3.0.0 "Nexus" TUI application.
 
-    CSS_PATH = Path(__file__).parent / "theme.tcss"
+    Parameters
+    ----------
+    start_screen : str
+        Which screen to activate on mount.
+        One of: 'create', 'unlock', 'vault', 'manage', 'backup',
+                'recovery', 'updates', 'generate', 'security'
+    exe_mode : bool
+        True when launched from nyx.exe (not via `nyx tui`).
+        Controls whether Escape / q tries to quit or just locks.
+    """
+
+    CSS_PATH = "theme.tcss"
 
     BINDINGS = [
-        Binding("q",             "quit",        "Quit",     show=True),
-        Binding("question_mark", "help_info",   "Help",     show=True),
-        Binding("c",             "copy_pass",   "Copy",     show=True),
-        Binding("t",             "totp_code",   "TOTP",     show=True),
-        Binding("A",             "audit",       "Audit",    show=True),
-        Binding("slash",         "search",      "Search",   show=True),
-        Binding("escape",        "clear_search","Clear",    show=False),
-        Binding("j",             "nav_down",    "Down",     show=False),
-        Binding("k",             "nav_up",      "Up",       show=False),
-        Binding("down",          "nav_down",    "Down",     show=False),
-        Binding("up",            "nav_up",      "Up",       show=False),
-        Binding("d",             "delete_entry","Delete",   show=False),
-        Binding("p",             "profiles",    "Profiles", show=False),
+        Binding("1", "navigate('vault')",    "Vault",    show=False),
+        Binding("2", "navigate('manage')",   "Manage",   show=False),
+        Binding("3", "navigate('backup')",   "Backup",   show=False),
+        Binding("4", "navigate('recovery')", "Recovery", show=False),
+        Binding("5", "navigate('updates')",  "Updates",  show=False),
+        Binding("6", "navigate('generate')", "Generate", show=False),
+        Binding("7", "navigate('security')", "Security", show=False),
+        Binding("q", "quit",                 "Quit",     show=True),
+        Binding("?", "show_help",            "Help",     show=True),
     ]
 
-    def __init__(self, entries, vault_path, session_id, **kwargs):
-        super().__init__(**kwargs)
-        self._entries = entries
-        self._vault_path = vault_path
-        self._session_id = session_id
-        self._pending_delete_id: str | None = None
+    # sidebar nav items — order matches key bindings 1-7
+    NAV_ITEMS = [
+        ("1", "◆  Vault",    "vault"),
+        ("2", "≡  Manage",   "manage"),
+        ("3", "⊞  Backup",   "backup"),
+        ("4", "⟳  Recovery", "recovery"),
+        ("5", "↑  Updates",  "updates"),
+        ("6", "⚡ Generate", "generate"),
+        ("7", "⊛  Security", "security"),
+    ]
+
+    def __init__(
+        self,
+        start_screen: str = "manage",
+        exe_mode: bool = False,
+    ) -> None:
+        super().__init__()
+        self.start_screen = start_screen
+        self.exe_mode = exe_mode
+        self._active_screen = "manage"
+
+    # ── Layout ──────────────────────────────────────────────────
+
+    def compose(self) -> ComposeResult:
+        yield self._build_header()
+        with Horizontal(id="app-body"):
+            yield self._build_sidebar()
+            with ContentSwitcher(
+                id="workspace",
+                initial="screen-manage",
+            ):
+                yield PlaceholderScreen("vault",    id="screen-vault")
+                yield PlaceholderScreen("manage",   id="screen-manage")
+                yield PlaceholderScreen("backup",   id="screen-backup")
+                yield PlaceholderScreen("recovery", id="screen-recovery")
+                yield PlaceholderScreen("updates",  id="screen-updates")
+                yield PlaceholderScreen("generate", id="screen-generate")
+                yield PlaceholderScreen("security", id="screen-security")
+        yield Footer()
+
+    def _build_header(self) -> Static:
+        locked_state = self._get_vault_status()
+        status_class = "status-unlocked" if locked_state == "UNLOCKED" else "status-locked"
+        return Static(
+            f" ◆ NYXORA  Tactical Secrets Vault  v{__version__}"
+            f"  [{locked_state}]",
+            id="app-header",
+            classes=status_class,
+        )
+
+    def _build_sidebar(self) -> Vertical:
+        items = []
+        for key, label, screen_id in self.NAV_ITEMS:
+            items.append(NavItem(key, label, screen_id))
+
+        lv = ListView(*items, id="nav-list")
+
+        sidebar = Vertical(
+            Static(" NAVIGATE", id="sidebar-title"),
+            lv,
+            Static(
+                f" nyxora v{__version__}\n scorpiocodex",
+                id="sidebar-footer",
+            ),
+            id="sidebar",
+        )
+        return sidebar
+
+    # ── Mount ────────────────────────────────────────────────────
 
     def on_mount(self) -> None:
-        from nyxora.tui.screens.vault_browser import VaultBrowserScreen
-        from nyxora.tui.screens.search_overlay import SearchScreen
-        from nyxora.tui.screens.audit_screen import AuditScreen
-        self.install_screen(
-            VaultBrowserScreen(
-                self._entries, self._vault_path, self._session_id
-            ), name="browser"
-        )
-        self.install_screen(SearchScreen(), name="search")
-        self.install_screen(AuditScreen(self._entries), name="audit")
-        self.push_screen("browser")
-
-    def _get_browser(self):
-        """Return the VaultBrowserScreen if it is the active screen."""
-        from nyxora.tui.screens.vault_browser import VaultBrowserScreen
-        screen = self.screen
-        if isinstance(screen, VaultBrowserScreen):
-            return screen
-        return None
-
-    def action_nav_down(self) -> None:
-        b = self._get_browser()
-        if b:
-            b.action_cursor_down()
-
-    def action_nav_up(self) -> None:
-        b = self._get_browser()
-        if b:
-            b.action_cursor_up()
-
-    def action_copy_pass(self) -> None:
-        b = self._get_browser()
-        if b:
-            b.action_copy_pass()
-
-    def action_totp_code(self) -> None:
-        b = self._get_browser()
-        if b:
-            b.action_totp()
-
-    def action_audit(self) -> None:
-        from nyxora.tui.screens.audit_screen import AuditScreen
-        if not isinstance(self.screen, AuditScreen):
-            self.push_screen("audit")
-
-    def action_search(self) -> None:
-        from nyxora.tui.screens.search_overlay import SearchScreen
-        if not isinstance(self.screen, SearchScreen):
-            self.push_screen("search")
-
-    def action_clear_search(self) -> None:
-        from nyxora.tui.screens.search_overlay import SearchScreen
-        if isinstance(self.screen, SearchScreen):
-            self.pop_screen()
+        """Route to the correct starting screen."""
+        if self.start_screen in ("create", "unlock"):
+            # Push unlock/create as a full-screen overlay.
+            # These screens are implemented in Prompt 4.
+            # For now, fall through to manage.
+            self._switch_to("manage")
         else:
-            b = self._get_browser()
-            if b:
-                b.apply_filter("")
+            target = self.start_screen if self.start_screen in (
+                "vault", "manage", "backup", "recovery",
+                "updates", "generate", "security"
+            ) else "manage"
+            self._switch_to(target)
 
-    def action_delete_entry(self) -> None:
-        b = self._get_browser()
-        if not b:
-            return
-        record = b._get_selected()
-        if not record:
-            return
+    # ── Navigation ───────────────────────────────────────────────
 
-        if self._pending_delete_id == record.id:
-            # Second press — actually delete
-            self._pending_delete_id = None
-            try:
-                from nyxora.cli.helpers import load_session
-                from nyxora.core.vault_store import VaultStore
-                from nyxora.core.crypto_engine import CryptoEngine
-                from nyxora.core.memory_guard import wipe_memory
+    def action_navigate(self, screen_id: str) -> None:
+        """Switch the workspace to the named screen."""
+        self._switch_to(screen_id)
 
-                session = load_session()
-                if session is None:
-                    self.notify("Vault locked.", severity="error")
-                    return
-                _, vault_path, root_key = session
-                engine = CryptoEngine(
-                    argon2_memory=65536, argon2_time=1, argon2_parallelism=1
-                )
-                store = VaultStore(engine)
-                try:
-                    store.open(vault_path, root_key)
-                    store.delete_entry(record.id)
-                    store.close()
-                finally:
-                    wipe_memory(root_key)
+    def _switch_to(self, screen_id: str) -> None:
+        """Update ContentSwitcher and highlight the matching nav item."""
+        switcher = self.query_one("#workspace", ContentSwitcher)
+        switcher.current = f"screen-{screen_id}"
+        self._active_screen = screen_id
+        self._update_nav_highlight(screen_id)
+        self._update_header_status()
 
-                # Remove from in-memory list and refresh
-                b._all_entries = [
-                    e for e in b._all_entries if e.id != record.id
-                ]
-                b._populate_list(b._filtered_entries())
-                self.notify(
-                    f"'{record.title}' deleted.",
-                    title="Deleted",
-                    severity="warning",
-                )
-            except Exception as e:
-                self.notify(str(e), title="Delete Failed", severity="error")
-        else:
-            # First press — set pending and notify
-            self._pending_delete_id = record.id
-            self.notify(
-                f"Delete '{record.title}'? Press D again to confirm.",
-                title="Confirm Delete",
-                severity="warning",
-                timeout=4,
+    def _update_nav_highlight(self, screen_id: str) -> None:
+        """Move the amber highlight to the active nav item."""
+        try:
+            nav_list = self.query_one("#nav-list", ListView)
+            for item in nav_list.query(NavItem):
+                if item.screen_id == screen_id:
+                    nav_list.index = list(nav_list.query(NavItem)).index(item)
+                    break
+        except Exception:
+            pass
+
+    def _update_header_status(self) -> None:
+        """Refresh the vault status badge in the header."""
+        try:
+            status = self._get_vault_status()
+            header = self.query_one("#app-header", Static)
+            header.update(
+                f" ◆ NYXORA  Tactical Secrets Vault  v{__version__}"
+                f"  [{status}]"
             )
+            header.remove_class("status-unlocked", "status-locked")
+            if status == "UNLOCKED":
+                header.add_class("status-unlocked")
+            else:
+                header.add_class("status-locked")
+        except Exception:
+            pass
 
-            # Auto-cancel pending delete after 4 seconds
-            import threading
-            def _cancel():
-                import time
-                time.sleep(4)
-                if self._pending_delete_id == record.id:
-                    self._pending_delete_id = None
-            threading.Thread(target=_cancel, daemon=True).start()
+    def _get_vault_status(self) -> str:
+        """Return 'UNLOCKED' or 'LOCKED' based on current session."""
+        try:
+            from nyxora.cli.helpers import load_session
+            return "UNLOCKED" if load_session() is not None else "LOCKED"
+        except Exception:
+            return "LOCKED"
 
-    def action_profiles(self) -> None:
-        b = self._get_browser()
-        if b:
-            b.action_profiles()
+    # ── ListView events ──────────────────────────────────────────
 
-    def action_help_info(self) -> None:
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Handle sidebar click navigation."""
+        if isinstance(event.item, NavItem):
+            self._switch_to(event.item.screen_id)
+
+    # ── Other actions ────────────────────────────────────────────
+
+    def action_show_help(self) -> None:
+        """Show a brief help notification."""
         self.notify(
-            "j/k ↑↓ navigate  c copy  t TOTP  A audit  / search  Esc clear  q quit",
-            title="NYXORA Keybindings",
+            "1-7 navigate · q quit · ? help\n"
+            "In Manage: a add · e edit · d delete · c copy · t TOTP",
+            title="◆ NYXORA Keybindings",
             timeout=6,
         )
+
+    def action_quit(self) -> None:
+        if self.exe_mode:
+            # In exe mode, lock the vault before quitting
+            try:
+                from nyxora.core.session_core import SessionManager
+                sm = SessionManager()
+                sm.terminate_session()
+            except Exception:
+                pass
+        self.exit()
+
+
+# ── CLI entry point (used by `nyx tui` command) ──────────────────
+
+def launch_tui(start_screen: str = "manage") -> None:
+    """Called by src/nyxora/cli/commands/tui_cmd.py."""
+    app = NyxoraApp(start_screen=start_screen, exe_mode=False)
+    app.run()

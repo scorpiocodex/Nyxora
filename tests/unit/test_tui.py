@@ -26,12 +26,7 @@ def _make_entries() -> list[EntryRecord]:
 def test_nyxora_app_instantiation():
     """NyxoraApp can be created without errors."""
     from nyxora.tui.app import NyxoraApp
-    entries = _make_entries()
-    app = NyxoraApp(
-        entries=entries,
-        vault_path="/fake/vault.nyx",
-        session_id="abc123def456",
-    )
+    app = NyxoraApp(start_screen="manage", exe_mode=False)
     assert app is not None
 
 
