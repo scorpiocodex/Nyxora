@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.6] - 2026-05-18
+
+### Fixed
+- **Recovery QR code size** — now renders at half size using Unicode
+  half-block characters (▀ ▄ █) combining two matrix rows per terminal
+  line. Output is approximately half the previous height and width
+  while remaining fully scannable.
+
+---
+
 ## [2.6.5] - 2026-05-18
 
 ### Fixed

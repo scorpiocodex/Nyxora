@@ -57,14 +57,21 @@ def setup() -> None:
         # Build QR as string matrix and print with explicit black/white
         # backgrounds so scanners get dark-on-light (required for scanning)
         matrix = qr.get_matrix()  # pragma: no cover
-        for row in matrix:  # pragma: no cover
-            line = "[on white]  "  # pragma: no cover
-            for cell in row:  # pragma: no cover
-                if cell:  # pragma: no cover
-                    line += "[black on white]██[/black on white]"  # pragma: no cover
+        rows = len(matrix)  # pragma: no cover
+        for y in range(0, rows, 2):  # pragma: no cover
+            line = "[on white] "  # pragma: no cover
+            for x in range(len(matrix[y])):  # pragma: no cover
+                top = matrix[y][x]  # pragma: no cover
+                bot = matrix[y + 1][x] if (y + 1) < rows else False  # pragma: no cover
+                if top and bot:  # pragma: no cover
+                    line += "[black on white]█[/black on white]"  # pragma: no cover
+                elif top and not bot:  # pragma: no cover
+                    line += "[black on white]▀[/black on white]"  # pragma: no cover
+                elif not top and bot:  # pragma: no cover
+                    line += "[black on white]▄[/black on white]"  # pragma: no cover
                 else:  # pragma: no cover
-                    line += "[white on white]  [/white on white]"  # pragma: no cover
-            line += "  [/on white]"  # pragma: no cover
+                    line += "[white on white] [/white on white]"  # pragma: no cover
+            line += " [/on white]"  # pragma: no cover
             console.print(line)  # pragma: no cover
   # pragma: no cover
         console.print()  # pragma: no cover
