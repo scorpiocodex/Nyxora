@@ -1,180 +1,594 @@
-/* ── Obsidian Tactical — NYXORA TUI Theme ─────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   NYXORA v3.0.0 "Nexus" — Obsidian Tactical Theme
+   Amber #C89A30 · Near-black #0B0D12 · Obsidian Tactical palette
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Global ──────────────────────────────────────────────────── */
 
 Screen {
     background: #0B0D12;
 }
 
-/* ── Layout containers ─────────────────────────────────────────────── */
+/* ── App layout ──────────────────────────────────────────────── */
 
-#app-grid {
-    layout: grid;
-    grid-size: 2;
-    grid-columns: 28 1fr;
-    grid-rows: 1fr;
-    height: 1fr;
-}
-
-#left-panel {
-    background: #0B0D12;
-    border-right: tall #1A2430;
-    height: 100%;
-}
-
-#right-panel {
-    background: #0B0D12;
-    padding: 0 2;
-    height: 100%;
-}
-
-/* ── Header ────────────────────────────────────────────────────────── */
-
-#tui-header {
-    height: 3;
+#app-header {
+    height: 1;
     background: #0F1218;
     border-bottom: tall #1A2430;
     color: #C89A30;
     text-style: bold;
-    padding: 1 1;
+    padding: 0 1;
 }
 
-/* ── Entry list ────────────────────────────────────────────────────── */
+#app-body {
+    layout: horizontal;
+    height: 1fr;
+}
 
-#panel-title {
+/* ── Sidebar ─────────────────────────────────────────────────── */
+
+#sidebar {
+    width: 24;
+    background: #0C1017;
+    border-right: tall #1A2430;
+    height: 1fr;
+    layout: vertical;
+}
+
+#sidebar-title {
     height: 1;
-    background: #0D1016;
-    border-bottom: tall #1A2430;
-    color: #C89A30;
+    background: #0C1017;
+    color: #2E3C4A;
     text-style: bold;
     padding: 0 1;
+    border-bottom: tall #141C24;
 }
 
-#search-bar {
-    height: 1;
-    background: #0B0D12;
-    border-bottom: tall #1A2430;
-    color: #C89A30;
+#sidebar-footer {
+    height: 2;
+    background: #080A0E;
+    border-top: tall #141C24;
+    color: #222E3A;
     padding: 0 1;
-}
-
-#search-input {
-    background: #0B0D12;
-    border: none;
-    color: #E8D5A8;
-    height: 1;
-    width: 1fr;
-}
-
-#search-input:focus {
-    border: none;
-    background: #0D0A00;
 }
 
 ListView {
-    background: #0B0D12;
+    background: #0C1017;
     border: none;
     height: 1fr;
     padding: 0;
 }
 
 ListItem {
-    background: #0B0D12;
+    background: #0C1017;
     border-left: tall transparent;
-    padding: 0 1;
     height: 2;
+    padding: 0 1;
+    color: #6A7A88;
 }
 
 ListItem:hover {
-    background: #0D1016;
+    background: #1A2230;
+    color: #A8B8C8;
 }
 
 ListItem.--highlight {
     background: #111500;
     border-left: tall #C89A30;
-}
-
-ListItem.--highlight > .entry-title {
-    color: #E8D5A8;
+    color: #C89A30;
     text-style: bold;
 }
 
-.entry-title {
-    color: #6A7A88;
+.nav-key {
+    color: #2E3C4A;
 }
 
-.entry-sub {
-    color: #344252;
+ListItem.--highlight .nav-key {
+    color: #8A6D10;
 }
 
-/* ── Detail panel ──────────────────────────────────────────────────── */
+/* ── Workspace ───────────────────────────────────────────────── */
 
-#detail-scroll {
+#workspace {
+    background: #0B0D12;
     height: 1fr;
-    background: #0B0D12;
-}
-
-#detail-content {
     padding: 1 2;
-    background: #0B0D12;
-    color: #8A9AA8;
-    height: auto;
 }
 
-#detail-title {
+ContentSwitcher {
+    background: #0B0D12;
+    height: 1fr;
+}
+
+/* ── Screen titles ───────────────────────────────────────────── */
+
+.screen-title {
     color: #C89A30;
     text-style: bold;
     height: 1;
     padding: 0 0 1 0;
 }
 
+.screen-subtitle {
+    color: #344252;
+    height: 1;
+}
+
+/* ── Manage screen — two-panel layout ───────────────────────── */
+
+#manage-layout {
+    layout: horizontal;
+    height: 1fr;
+}
+
+#entry-list-panel {
+    width: 30;
+    background: #0B0D12;
+    border-right: tall #1A2430;
+    height: 1fr;
+    layout: vertical;
+}
+
+#entry-search-wrap {
+    height: 3;
+    border-bottom: tall #1A2430;
+    background: #0B0D12;
+    padding: 0;
+}
+
+#entry-search {
+    background: #0B0D12;
+    border: none;
+    color: #E8D5A8;
+    height: 3;
+    padding: 0 1;
+}
+
+#entry-search:focus {
+    border: none;
+    background: #0D0A00;
+}
+
+#entry-items {
+    background: #0B0D12;
+    border: none;
+    height: 1fr;
+    padding: 0;
+}
+
+.entry-item {
+    height: 2;
+    border-left: tall transparent;
+    padding: 0 1;
+    background: #0B0D12;
+    color: #6A7A88;
+}
+
+.entry-item:hover {
+    background: #0D1016;
+    color: #A8B8C8;
+}
+
+.entry-item.selected {
+    background: #111500;
+    border-left: tall #C89A30;
+    color: #E8D5A8;
+    text-style: bold;
+}
+
+.entry-sub {
+    color: #344252;
+}
+
+#entry-detail-panel {
+    background: #0B0D12;
+    padding: 1 2;
+    height: 1fr;
+}
+
+#entry-detail-scroll {
+    background: #0B0D12;
+    border: none;
+    height: 1fr;
+}
+
+.entry-detail-title {
+    color: #C89A30;
+    text-style: bold;
+    height: 1;
+}
+
 .field-label {
     color: #344252;
-    width: 12;
+    width: 14;
 }
 
 .field-value {
     color: #A8B8C8;
 }
 
-.field-value.password {
+.field-pw {
     color: #445462;
 }
 
-.field-value.url {
+.field-url {
     color: #3A7A9A;
 }
 
-.field-value.totp {
+.field-totp {
     color: #2A7A4A;
     text-style: bold;
 }
 
-.field-value.strength-excellent {
-    color: #2A7A4A;
-}
-
-.field-value.strength-strong {
-    color: #3A7A9A;
-}
-
-.field-value.strength-fair {
+.field-tags {
     color: #C89A30;
 }
 
-.field-value.strength-weak {
-    color: #CC3333;
+.field-notes {
+    color: #556070;
 }
 
-/* ── Action bar ────────────────────────────────────────────────────── */
+/* ── Strength classes ────────────────────────────────────────── */
 
-#action-bar {
-    height: 1;
+.sw { color: #CC3333; }
+.sf { color: #C89A30; }
+.sg { color: #3A7A9A; }
+.se { color: #2A7A4A; }
+
+/* ── Section cards ───────────────────────────────────────────── */
+
+.info-card {
     background: #0D1016;
-    border-top: tall #1A2430;
-    color: #2E3C4A;
+    border: tall #1A2430;
+    padding: 1;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.info-card-title {
+    color: #344252;
+    text-style: bold;
+    height: 1;
+}
+
+.info-card-value {
+    color: #A8B8C8;
+    height: 1;
+}
+
+/* ── Vault status ─────────────────────────────────────────────── */
+
+.status-unlocked {
+    color: #2A7A4A;
+    background: #060E08;
+    border: tall #0A2014;
+    height: 1;
     padding: 0 1;
 }
 
-/* ── Footer ────────────────────────────────────────────────────────── */
+.status-locked {
+    color: #CC3333;
+    background: #0A0606;
+    border: tall #2A0808;
+    height: 1;
+    padding: 0 1;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+
+Button {
+    background: #111820;
+    border: tall #2A3440;
+    color: #8A9AA8;
+    height: 3;
+    margin-right: 1;
+}
+
+Button:hover {
+    background: #1A2230;
+    border: tall #3A4450;
+    color: #E8D5A8;
+}
+
+Button:focus {
+    border: tall #C89A30;
+}
+
+Button.primary {
+    background: #0D0A00;
+    border: tall #C89A30;
+    color: #C89A30;
+}
+
+Button.primary:hover {
+    background: #1A1400;
+}
+
+Button.danger {
+    background: #0A0606;
+    border: tall #CC3333;
+    color: #CC3333;
+}
+
+Button.danger:hover {
+    background: #180808;
+}
+
+Button.success {
+    background: #060E08;
+    border: tall #2A7A4A;
+    color: #2A7A4A;
+}
+
+Button.success:hover {
+    background: #0A1808;
+}
+
+/* ── Input fields ─────────────────────────────────────────────── */
+
+Input {
+    background: #0D1218;
+    border: tall #1A2430;
+    color: #E8D5A8;
+    height: 3;
+    padding: 0 1;
+}
+
+Input:focus {
+    border: tall #C89A30;
+    background: #0D0A00;
+}
+
+Input.-invalid {
+    border: tall #CC3333;
+}
+
+TextArea {
+    background: #0D1218;
+    border: tall #1A2430;
+    color: #E8D5A8;
+    min-height: 5;
+    padding: 1;
+}
+
+TextArea:focus {
+    border: tall #C89A30;
+}
+
+/* ── Form labels ──────────────────────────────────────────────── */
+
+.form-label {
+    color: #344252;
+    text-style: bold;
+    height: 1;
+    padding: 0 0 0 0;
+}
+
+.form-error {
+    color: #CC3333;
+    height: 1;
+}
+
+.form-hint {
+    color: #2E3C4A;
+    height: 1;
+}
+
+/* ── Progress bar ─────────────────────────────────────────────── */
+
+ProgressBar {
+    background: #1A2430;
+    height: 1;
+}
+
+ProgressBar > .bar--bar {
+    background: #C89A30;
+}
+
+ProgressBar.pw-weak > .bar--bar { background: #CC3333; }
+ProgressBar.pw-fair > .bar--bar { background: #C89A30; }
+ProgressBar.pw-strong > .bar--bar { background: #3A7A9A; }
+ProgressBar.pw-excellent > .bar--bar { background: #2A7A4A; }
+
+/* ── Radio / toggle ───────────────────────────────────────────── */
+
+RadioSet {
+    background: #0B0D12;
+    border: none;
+    height: auto;
+    layout: horizontal;
+}
+
+RadioButton {
+    background: #0D1218;
+    border: tall #1A2430;
+    color: #6A7A88;
+    height: 3;
+    padding: 0 1;
+    margin-right: 1;
+}
+
+RadioButton:hover {
+    color: #A8B8C8;
+    border: tall #2A3440;
+}
+
+RadioButton.-selected {
+    background: #0D0A00;
+    border: tall #C89A30;
+    color: #C89A30;
+}
+
+/* ── Checkbox ─────────────────────────────────────────────────── */
+
+Checkbox {
+    background: #0B0D12;
+    color: #6A7A88;
+    border: none;
+    height: 1;
+    margin-right: 2;
+}
+
+Checkbox:hover {
+    color: #A8B8C8;
+}
+
+Checkbox.-on {
+    color: #C89A30;
+}
+
+/* ── Slider ───────────────────────────────────────────────────── */
+
+Slider {
+    background: #1A2430;
+    height: 1;
+    margin: 1 0;
+}
+
+Slider > .slider--slider {
+    background: #C89A30;
+}
+
+/* ── DataTable ────────────────────────────────────────────────── */
+
+DataTable {
+    background: #0B0D12;
+    border: none;
+    color: #6A7A88;
+    height: auto;
+}
+
+DataTable > .datatable--header {
+    background: #0D1016;
+    color: #344252;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: #111500;
+    color: #E8D5A8;
+}
+
+DataTable > .datatable--even-row {
+    background: #0D1016;
+}
+
+/* ── Protocol list (recovery screen) ─────────────────────────── */
+
+.protocol-item {
+    background: #0D1016;
+    border: tall #1A2430;
+    height: 3;
+    padding: 0 1;
+    color: #6A7A88;
+    margin-bottom: 1;
+}
+
+.protocol-item:hover {
+    border: tall #2A3440;
+    color: #A8B8C8;
+}
+
+.protocol-item.active {
+    background: #0D0A00;
+    border: tall #C89A30;
+    color: #C89A30;
+}
+
+/* ── Version compare boxes (updates screen) ───────────────────── */
+
+#version-compare {
+    layout: horizontal;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.version-box {
+    background: #0D1016;
+    border: tall #1A2430;
+    height: 5;
+    padding: 1;
+    width: 1fr;
+    margin-right: 2;
+}
+
+.version-box-latest {
+    border: tall #C89A30;
+}
+
+.version-lbl {
+    color: #344252;
+    height: 1;
+}
+
+.version-num {
+    color: #E8D5A8;
+    text-style: bold;
+    height: 1;
+}
+
+.version-num-latest {
+    color: #C89A30;
+    text-style: bold;
+    height: 1;
+}
+
+.update-ok {
+    background: #060E08;
+    border: tall #0A2014;
+    color: #2A7A4A;
+    height: 3;
+    padding: 0 1;
+}
+
+.update-available {
+    background: #0D0A00;
+    border: tall #C89A30;
+    color: #C89A30;
+    height: 3;
+    padding: 0 1;
+}
+
+/* ── Unlock / create vault screens ───────────────────────────── */
+
+#unlock-box {
+    background: #0F1218;
+    border: tall #1A2430;
+    width: 52;
+    height: auto;
+    padding: 2;
+    margin: 4 0;
+}
+
+#unlock-icon {
+    color: #C89A30;
+    text-style: bold;
+    text-align: center;
+    height: 3;
+}
+
+#unlock-title {
+    color: #E8D5A8;
+    text-style: bold;
+    text-align: center;
+    height: 1;
+    margin-bottom: 1;
+}
+
+#unlock-subtitle {
+    color: #344252;
+    text-align: center;
+    height: 1;
+    margin-bottom: 1;
+}
+
+#unlock-error {
+    color: #CC3333;
+    height: 1;
+    text-align: center;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
 
 Footer {
     background: #080A0E;
@@ -187,63 +601,13 @@ Footer > .footer--key {
     color: #C89A30;
 }
 
-/* ── Search overlay ────────────────────────────────────────────────── */
+/* ── Scrollbars ───────────────────────────────────────────────── */
 
-SearchScreen {
-    align: center top;
-    background: rgba(0,0,0,0);
+ScrollBar {
+    background: #0B0D12;
+    color: #1A2430;
 }
 
-#search-overlay {
-    background: #0F1218;
-    border: tall #C89A30;
-    width: 60;
-    height: auto;
-    margin-top: 2;
-    padding: 1 2;
-}
-
-/* ── Audit screen ──────────────────────────────────────────────────── */
-
-#audit-grid {
-    layout: grid;
-    grid-size: 2;
-    grid-columns: 22 1fr;
-    grid-gutter: 1;
-    padding: 1 2;
-}
-
-#health-panel {
-    background: #0D1016;
-    border: tall #1A2430;
-    height: 12;
-    padding: 1;
-    text-align: center;
-}
-
-#health-score {
-    color: #C89A30;
-    text-style: bold;
-    text-align: center;
-}
-
-#stats-grid {
-    layout: grid;
-    grid-size: 3;
-    grid-gutter: 1;
-}
-
-.stat-card {
-    background: #0D1016;
-    border: tall #1A2430;
-    padding: 1;
-    height: 5;
-}
-
-.stat-number {
-    text-style: bold;
-}
-
-.stat-label {
+ScrollBar:hover {
     color: #344252;
 }
