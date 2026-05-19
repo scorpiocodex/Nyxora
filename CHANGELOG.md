@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.5] - 2026-05-18
+
+### Fixed
+- **nyx backup verify** — argument is now optional; when omitted, automatically
+  selects the most recent backup from ~/.nyxora/backups/ with an info panel
+  showing which file was selected
+- **nyx script pipe/run on Windows** — Windows built-in commands (more, type,
+  findstr, etc.) now work via shell=True routing through cmd.exe; non-Windows
+  systems continue to use direct subprocess without shell
+
+---
+
 ## [2.6.4] - 2026-05-13
 
 ### Fixed

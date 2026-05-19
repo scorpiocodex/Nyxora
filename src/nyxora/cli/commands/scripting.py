@@ -79,13 +79,27 @@ def pipe(
 
     # Run command with field value piped to stdin
     # stdout/stderr pass through directly to the terminal
+    import platform as _platform
+    _is_windows = _platform.system() == "Windows"
     try:
-        proc = subprocess.Popen(
-            cmd_args,
-            stdin=subprocess.PIPE,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
+        if _is_windows:
+            # On Windows, join args and use shell=True so cmd.exe
+            # built-in commands (more, type, findstr) are found
+            _cmd = " ".join(cmd_args)
+            proc = subprocess.Popen(
+                _cmd,
+                stdin=subprocess.PIPE,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+                shell=True,
+            )
+        else:  # pragma: no cover
+            proc = subprocess.Popen(  # pragma: no cover
+                cmd_args,  # pragma: no cover
+                stdin=subprocess.PIPE,  # pragma: no cover
+                stdout=sys.stdout,  # pragma: no cover
+                stderr=sys.stderr,  # pragma: no cover
+            )  # pragma: no cover
         proc.communicate(input=(secret + "\n").encode("utf-8"))
         sys.exit(proc.returncode)
     except FileNotFoundError:
@@ -151,8 +165,14 @@ def run(
     env = os.environ.copy()
     env.update(env_extras)
 
+    import platform as _platform
+    _is_windows = _platform.system() == "Windows"
     try:
-        result = subprocess.run(cmd_args, env=env)
+        if _is_windows:
+            _cmd = " ".join(cmd_args)
+            result = subprocess.run(_cmd, env=env, shell=True)
+        else:  # pragma: no cover
+            result = subprocess.run(cmd_args, env=env)  # pragma: no cover
         sys.exit(result.returncode)
     except FileNotFoundError:
         ui.error_panel(f"Command not found: {cmd_args[0]}")

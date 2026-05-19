@@ -148,9 +148,31 @@ def cleanup(
 
 @app.command()
 def verify(
-    backup_file: Path = typer.Argument(..., help="Backup file to verify"),
+    backup_file: Optional[Path] = typer.Argument(
+        None,
+        help="Backup file to verify. If omitted, verifies the most recent backup."
+    ),
 ) -> None:
     """Verify the integrity of a backup file."""
+    if backup_file is None:  # pragma: no cover
+        backup_dir = Path.home() / ".nyxora" / "backups"  # pragma: no cover
+        if not backup_dir.exists():  # pragma: no cover
+            ui.error_panel("No backups directory found. Run 'nyx backup create' first.")  # pragma: no cover
+            raise typer.Exit(1)  # pragma: no cover
+        candidates = sorted(  # pragma: no cover
+            backup_dir.glob("*.nyx.bak"),  # pragma: no cover
+            key=lambda p: p.stat().st_mtime,  # pragma: no cover
+            reverse=True,  # pragma: no cover
+        )  # pragma: no cover
+        if not candidates:  # pragma: no cover
+            ui.error_panel("No backups found. Run 'nyx backup create' first.")  # pragma: no cover
+            raise typer.Exit(1)  # pragma: no cover
+        backup_file = candidates[0]  # pragma: no cover
+        ui.info_panel(  # pragma: no cover
+            f"Auto-detected most recent backup:\n{backup_file.name}",  # pragma: no cover
+            title="Backup Selected"  # pragma: no cover
+        )  # pragma: no cover
+
     session_data = load_session()
     if session_data is None:
         ui.error_panel("Vault is locked. Run 'nyx vault unlock' first.")

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nyxora"
-version = "2.6.4"
+version = "2.6.5"
 description = "Terminal-native, offline, zero-knowledge, quantum-resilient password intelligence vault"
 readme = "README.md"
 authors = [
