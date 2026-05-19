@@ -65,6 +65,20 @@ def test_entry_list_item_instantiation():
     assert item.record.title == "GitHub"
 
 
+def test_unlock_screen_instantiation():
+    """UnlockScreen can be created without errors."""
+    from nyxora.tui.screens.unlock import UnlockScreen
+    screen = UnlockScreen()
+    assert screen is not None
+
+
+def test_create_vault_screen_instantiation():
+    """CreateVaultScreen can be created without errors."""
+    from nyxora.tui.screens.unlock import CreateVaultScreen
+    screen = CreateVaultScreen()
+    assert screen is not None
+
+
 def test_tui_cmd_no_textual(monkeypatch):
     """tui command handles missing textual gracefully."""
     import builtins

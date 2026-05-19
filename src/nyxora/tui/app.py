@@ -164,17 +164,31 @@ class NyxoraApp(App):
 
     def on_mount(self) -> None:
         """Route to the correct starting screen."""
-        if self.start_screen in ("create", "unlock"):
-            # Push unlock/create as a full-screen overlay.
-            # These screens are implemented in Prompt 4.
-            # For now, fall through to manage.
-            self._switch_to("manage")
+        if self.start_screen == "create":
+            from nyxora.tui.screens.unlock import CreateVaultScreen
+            self.push_screen(CreateVaultScreen(), self._on_vault_ready)
+        elif self.start_screen == "unlock":
+            from nyxora.tui.screens.unlock import UnlockScreen
+            self.push_screen(UnlockScreen(), self._on_vault_ready)
         else:
             target = self.start_screen if self.start_screen in (
                 "vault", "manage", "backup", "recovery",
                 "updates", "generate", "security"
             ) else "manage"
             self._switch_to(target)
+
+    def _on_vault_ready(self, success: bool) -> None:
+        """Called when UnlockScreen or CreateVaultScreen dismisses."""
+        if success:
+            self._switch_to("manage")
+            self._update_header_status()
+            self.notify(
+                "Vault unlocked. Welcome to Nyxora.",
+                title="◆ UNLOCKED",
+                timeout=3,
+            )
+        else:
+            self.exit()
 
     # ── Navigation ───────────────────────────────────────────────
 
