@@ -123,6 +123,13 @@ def test_backup_screen_instantiation():
     assert screen is not None
 
 
+def test_recovery_screen_instantiation():
+    """RecoveryScreen can be created without errors."""
+    from nyxora.tui.screens.recovery import RecoveryScreen
+    screen = RecoveryScreen()
+    assert screen is not None
+
+
 def test_tui_cmd_no_textual(monkeypatch):
     """tui command handles missing textual gracefully."""
     import builtins
