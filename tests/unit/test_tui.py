@@ -130,6 +130,27 @@ def test_recovery_screen_instantiation():
     assert screen is not None
 
 
+def test_updates_screen_instantiation():
+    """UpdatesScreen can be created without errors."""
+    from nyxora.tui.screens.updates import UpdatesScreen
+    screen = UpdatesScreen()
+    assert screen is not None
+
+
+def test_generate_screen_instantiation():
+    """GenerateScreen can be created without errors."""
+    from nyxora.tui.screens.generate import GenerateScreen
+    screen = GenerateScreen()
+    assert screen is not None
+
+
+def test_security_screen_instantiation():
+    """SecurityScreen can be created without errors."""
+    from nyxora.tui.screens.security import SecurityScreen
+    screen = SecurityScreen()
+    assert screen is not None
+
+
 def test_tui_cmd_no_textual(monkeypatch):
     """tui command handles missing textual gracefully."""
     import builtins
