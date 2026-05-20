@@ -303,21 +303,24 @@ class ManageScreen(Static):
             self._render_detail()
 
     def action_add_entry(self) -> None:
-        # Wired properly in Prompt 7 — placeholder notification for now
-        self.app.notify(
-            "Add entry form — wired in Prompt 7.",
-            timeout=2,
-        )
+        from nyxora.tui.screens.add_entry import AddEntryScreen
+        self.app.push_screen(AddEntryScreen(), self._on_entry_saved)
 
     def action_edit_entry(self) -> None:
         if not self._selected:
             self.app.notify("Select an entry first.", timeout=2)
             return
-        # Wired properly in Prompt 7
-        self.app.notify(
-            "Edit entry form — wired in Prompt 7.",
-            timeout=2,
+        from nyxora.tui.screens.edit_entry import EditEntryScreen
+        self.app.push_screen(
+            EditEntryScreen(self._selected),
+            self._on_entry_saved,
         )
+
+    def _on_entry_saved(self, success: bool) -> None:
+        """Called when AddEntryScreen or EditEntryScreen dismisses."""
+        if success:
+            self._load_entries()
+            self.app.notify("Entry saved.", title="◆ Saved", timeout=2)
 
     def action_copy_pw(self) -> None:
         if not self._selected:

@@ -101,6 +101,21 @@ def test_entry_item_instantiation():
     assert item.record.title == "GitHub"
 
 
+def test_add_entry_screen_instantiation():
+    """AddEntryScreen can be created without errors."""
+    from nyxora.tui.screens.add_entry import AddEntryScreen
+    screen = AddEntryScreen()
+    assert screen is not None
+
+
+def test_edit_entry_screen_instantiation():
+    """EditEntryScreen can be created without errors."""
+    from nyxora.tui.screens.edit_entry import EditEntryScreen
+    entries = _make_entries()
+    screen = EditEntryScreen(record=entries[0])
+    assert screen is not None
+
+
 def test_tui_cmd_no_textual(monkeypatch):
     """tui command handles missing textual gracefully."""
     import builtins
