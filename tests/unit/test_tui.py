@@ -116,6 +116,13 @@ def test_edit_entry_screen_instantiation():
     assert screen is not None
 
 
+def test_backup_screen_instantiation():
+    """BackupScreen can be created without errors."""
+    from nyxora.tui.screens.backup import BackupScreen
+    screen = BackupScreen()
+    assert screen is not None
+
+
 def test_tui_cmd_no_textual(monkeypatch):
     """tui command handles missing textual gracefully."""
     import builtins
