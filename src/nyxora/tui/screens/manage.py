@@ -57,6 +57,8 @@ class ManageScreen(Static):
         Binding("a",      "add_entry",     "Add",    show=True),
         Binding("e",      "edit_entry",    "Edit",   show=True),
         Binding("c",      "copy_pw",       "Copy",   show=True),
+        Binding("u",      "copy_user",     "User",   show=True),
+        Binding("y",      "copy_url",      "URL",    show=True),
         Binding("t",      "show_totp",     "TOTP",   show=True),
         Binding("d",      "delete_entry",  "Delete", show=True),
         Binding("p",      "toggle_pw",     "Reveal", show=False),
@@ -92,6 +94,8 @@ class ManageScreen(Static):
                     )
                 with Horizontal(id="action-bar"):
                     yield Button("COPY",   id="btn-copy",   classes="primary")
+                    yield Button("USER",   id="btn-user")
+                    yield Button("URL",    id="btn-url")
                     yield Button("EDIT",   id="btn-edit")
                     yield Button("TOTP",   id="btn-totp")
                     yield Button("DELETE", id="btn-delete", classes="danger")
@@ -275,6 +279,8 @@ class ManageScreen(Static):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         dispatch = {
             "btn-copy":   self.action_copy_pw,
+            "btn-user":   self.action_copy_user,
+            "btn-url":    self.action_copy_url,
             "btn-edit":   self.action_edit_entry,
             "btn-totp":   self.action_show_totp,
             "btn-delete": self.action_delete_entry,
@@ -335,6 +341,52 @@ class ManageScreen(Static):
                 timeout=3,
             )
             self.set_timer(30.0, self._clear_clipboard)
+        except Exception as exc:
+            self.app.notify(
+                f"Copy failed: {exc}",
+                severity="error",
+                timeout=3,
+            )
+
+    def action_copy_user(self) -> None:
+        if not self._selected:
+            self.app.notify("Select an entry first.", timeout=2)
+            return
+        username = self._selected.username or ""
+        if not username:
+            self.app.notify("No username for this entry.", timeout=2)
+            return
+        try:
+            import pyperclip
+            pyperclip.copy(username)
+            self.app.notify(
+                f"Username '{username}' copied.",
+                title="◆ Copied",
+                timeout=3,
+            )
+        except Exception as exc:
+            self.app.notify(
+                f"Copy failed: {exc}",
+                severity="error",
+                timeout=3,
+            )
+
+    def action_copy_url(self) -> None:
+        if not self._selected:
+            self.app.notify("Select an entry first.", timeout=2)
+            return
+        url = self._selected.url or ""
+        if not url:
+            self.app.notify("No URL for this entry.", timeout=2)
+            return
+        try:
+            import pyperclip
+            pyperclip.copy(url)
+            self.app.notify(
+                f"URL '{url}' copied.",
+                title="◆ Copied",
+                timeout=3,
+            )
         except Exception as exc:
             self.app.notify(
                 f"Copy failed: {exc}",
