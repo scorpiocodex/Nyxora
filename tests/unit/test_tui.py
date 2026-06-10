@@ -305,6 +305,105 @@ def test_manage_letter_bindings_fire_when_input_not_focused():
     asyncio.run(scenario())
 
 
+def _patch_fake_vault(monkeypatch, saved):
+    """Route _do_totp_setup's vault access to fakes (no real vault)."""
+    import nyxora.cli.helpers as helpers
+    import nyxora.core.memory_guard as memory_guard
+
+    class FakeStore:
+        def set_metadata_value(self, key, value):
+            saved[key] = value
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(helpers, "load_session",
+                        lambda: ("vault", "vp", b"k"))
+    monkeypatch.setattr(helpers, "open_vault",
+                        lambda engine: (FakeStore(), None, b"\x00" * 32, None))
+    monkeypatch.setattr(memory_guard, "wipe_memory", lambda *_: None)
+
+
+def test_totp_setup_opens_qr_overlay(monkeypatch):
+    """SETUP TOTP saves the secret, then opens the QR overlay."""
+    import asyncio
+
+    from textual.widgets import Input
+
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.totp_qr_overlay import TotpQrOverlay
+
+    saved = {}
+    _patch_fake_vault(monkeypatch, saved)
+
+    async def scenario():
+        app = NyxoraApp(start_screen="recovery", exe_mode=False)
+        async with app.run_test(size=(140, 46)) as pilot:
+            await pilot.pause(0.3)
+            app.query_one("#totp-label", Input).value = "nyxora@example.com"
+            await pilot.pause()
+            await pilot.click("#btn-totp-setup")
+            await pilot.pause(0.3)
+            assert isinstance(app.screen, TotpQrOverlay)
+            assert app.screen.secret == saved["totp_secret"]
+
+    asyncio.run(scenario())
+
+
+def test_totp_qr_overlay_dismisses_on_escape():
+    """Esc closes the QR overlay and returns to the main screen."""
+    import asyncio
+
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.totp_qr_overlay import TotpQrOverlay
+
+    async def scenario():
+        app = NyxoraApp(start_screen="recovery", exe_mode=False)
+        async with app.run_test(size=(140, 46)) as pilot:
+            await pilot.pause(0.3)
+            app.push_screen(TotpQrOverlay(
+                secret="ABCDEF234567",
+                account_label="test@example.com",
+            ))
+            await pilot.pause()
+            assert isinstance(app.screen, TotpQrOverlay)
+            await pilot.press("escape")
+            await pilot.pause()
+            assert not isinstance(app.screen, TotpQrOverlay)
+
+    asyncio.run(scenario())
+
+
+def test_totp_qr_not_in_side_panel_after_mode_switch(monkeypatch):
+    """No stale QR half-block chars in the side panel after sub-mode switch."""
+    import asyncio
+
+    from textual.widgets import Input, Static
+
+    from nyxora.tui.app import NyxoraApp
+
+    saved = {}
+    _patch_fake_vault(monkeypatch, saved)
+
+    async def scenario():
+        app = NyxoraApp(start_screen="recovery", exe_mode=False)
+        async with app.run_test(size=(140, 46)) as pilot:
+            await pilot.pause(0.3)
+            app.query_one("#totp-label", Input).value = "nyxora@example.com"
+            await pilot.pause()
+            await pilot.click("#btn-totp-setup")
+            await pilot.pause(0.3)
+            await pilot.press("escape")
+            await pilot.pause(0.3)
+            await pilot.click("#btn-p-capsule")
+            await pilot.pause(0.3)
+            for wid in ("#totp-output", "#qr-placeholder"):
+                text = str(app.query_one(wid, Static).content)
+                assert not any(ch in text for ch in "▀▄█"), wid
+
+    asyncio.run(scenario())
+
+
 def test_unlock_password_field_accepts_all_digits():
     """Master password Input on UnlockScreen accepts digits 1-7."""
     import asyncio

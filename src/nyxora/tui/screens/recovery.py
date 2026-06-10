@@ -285,16 +285,13 @@ class RecoveryScreen(Static):
             engine   = CryptoEngine()
             recovery = RecoveryManager(engine)
             secret   = recovery.generate_totp_secret()
-            uri      = recovery.get_totp_uri(secret, label_val)
-
-            qr_lines = _render_qr(uri)
 
             store, _, root_key, _ = open_vault(engine)
             store.set_metadata_value("totp_secret", secret)
             store.close()
             wipe_memory(root_key)
 
-            # Hide placeholder, show QR in right panel
+            # Hide placeholder; side panel shows a brief confirmation
             try:
                 ph = self.query_one("#qr-placeholder", Static)
                 ph.update("")
@@ -309,11 +306,16 @@ class RecoveryScreen(Static):
                 f"  [dim]Scan QR with your authenticator app.[/dim]"
             )
 
-            # Full QR — strip trailing newlines, join cleanly
-            qr_text = "".join(
-                line.rstrip("\n") + "\n" for line in qr_lines
+            out.update(
+                "\n✓ TOTP saved.\nQR shown in overlay —\npress Esc to close."
             )
-            out.update(qr_text)
+
+            # QR goes to a full-screen overlay: the side panel is too
+            # short to show all 21+ rows unclipped (HANDOFF §7 / 3-4)
+            from nyxora.tui.screens.totp_qr_overlay import TotpQrOverlay
+            self.app.push_screen(
+                TotpQrOverlay(secret=secret, account_label=label_val)
+            )
             self._refresh_status()
 
         except Exception as exc:

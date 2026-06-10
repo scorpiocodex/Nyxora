@@ -744,3 +744,52 @@ NyxSep {
     color: #000000;
     padding: 0;
 }
+
+/* ── TOTP QR overlay screen ──────────────────────────────────── */
+
+TotpQrOverlay {
+    align: center middle;
+    background: #060810;
+}
+
+#qr-overlay-box {
+    width: auto;
+    height: auto;
+    background: #FFFFFF;
+    border: tall #C89A30;
+    padding: 0 2;
+}
+
+#qr-overlay-title {
+    width: 100%;
+    text-align: center;
+    color: #060810;
+    text-style: bold;
+}
+
+#qr-overlay-account {
+    width: 100%;
+    text-align: center;
+    color: #555555;
+}
+
+#qr-overlay-qr {
+    width: auto;
+    height: auto;
+    background: #FFFFFF;
+    color: #000000;
+}
+
+#qr-overlay-secret {
+    width: 100%;
+    text-align: center;
+    color: #060810;
+    text-style: bold;
+}
+
+#qr-overlay-hint {
+    width: 100%;
+    text-align: center;
+    color: #C89A30;
+    background: #FFFFFF;
+}
