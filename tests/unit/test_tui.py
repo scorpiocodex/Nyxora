@@ -183,3 +183,74 @@ def test_tui_cmd_no_textual(monkeypatch):
         m.setattr(builtins, "__import__", mock_import)
         result = runner.invoke(tui_app)
     assert result.exit_code in (0, 1)
+
+
+# ── Focus-aware nav bindings (C2 fix: priority=True removed) ──────
+
+
+def test_check_action_blocks_navigation_when_input_focused():
+    """Digits typed into a focused Input must not trigger nav bindings."""
+    import asyncio
+
+    from textual.widgets import ContentSwitcher, Input
+
+    from nyxora.tui.app import NyxoraApp
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.2)  # let Manage's deferred load settle
+            search = app.query_one("#entry-search", Input)
+            search.focus()
+            await pilot.pause()
+            await pilot.press("3")
+            await pilot.pause()
+            switcher = app.query_one("#workspace", ContentSwitcher)
+            assert switcher.current == "screen-manage"
+            assert "3" in search.value
+
+    asyncio.run(scenario())
+
+
+def test_check_action_allows_navigation_when_no_input_focused():
+    """Digit nav bindings still work when no Input has focus."""
+    import asyncio
+
+    from textual.widgets import ContentSwitcher
+
+    from nyxora.tui.app import NyxoraApp
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.2)
+            app.set_focus(None)
+            await pilot.pause()
+            await pilot.press("3")
+            await pilot.pause()
+            switcher = app.query_one("#workspace", ContentSwitcher)
+            assert switcher.current == "screen-backup"
+
+    asyncio.run(scenario())
+
+
+def test_unlock_password_field_accepts_all_digits():
+    """Master password Input on UnlockScreen accepts digits 1-7."""
+    import asyncio
+
+    from textual.widgets import Input
+
+    from nyxora.tui.app import NyxoraApp
+
+    async def scenario():
+        app = NyxoraApp(start_screen="unlock", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            pw = app.screen.query_one("#unlock-password", Input)
+            pw.focus()
+            await pilot.pause()
+            await pilot.press(*"abc1234567")
+            await pilot.pause()
+            assert pw.value == "abc1234567"
+
+    asyncio.run(scenario())

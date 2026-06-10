@@ -25,6 +25,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import (
     ContentSwitcher,
     Footer,
+    Input,
     Label,
     ListItem,
     ListView,
@@ -77,20 +78,13 @@ class NyxoraApp(App):
     CSS_PATH = "theme.tcss"
 
     BINDINGS = [
-        Binding("1", "navigate('vault')",    "Vault",
-                show=False, priority=True),
-        Binding("2", "navigate('manage')",   "Manage",
-                show=False, priority=True),
-        Binding("3", "navigate('backup')",   "Backup",
-                show=False, priority=True),
-        Binding("4", "navigate('recovery')", "Recovery",
-                show=False, priority=True),
-        Binding("5", "navigate('updates')",  "Updates",
-                show=False, priority=True),
-        Binding("6", "navigate('generate')", "Generate",
-                show=False, priority=True),
-        Binding("7", "navigate('security')", "Security",
-                show=False, priority=True),
+        Binding("1", "navigate('vault')",    "Vault",    show=False),
+        Binding("2", "navigate('manage')",   "Manage",   show=False),
+        Binding("3", "navigate('backup')",   "Backup",   show=False),
+        Binding("4", "navigate('recovery')", "Recovery", show=False),
+        Binding("5", "navigate('updates')",  "Updates",  show=False),
+        Binding("6", "navigate('generate')", "Generate", show=False),
+        Binding("7", "navigate('security')", "Security", show=False),
         Binding("q", "quit",                 "Quit",     show=True),
         Binding("?", "show_help",            "Help",     show=True),
     ]
@@ -198,6 +192,18 @@ class NyxoraApp(App):
     def action_navigate(self, screen_id: str) -> None:
         """Switch the workspace to the named screen."""
         self._switch_to(screen_id)
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        """Suppress digit nav bindings when an Input widget has focus.
+
+        Textual calls check_action for every binding; returning False
+        disables it for the current focus state. This lets master password
+        fields and search Inputs receive digits 1-7 without being
+        intercepted by the section navigation bindings.
+        """
+        if action.startswith("navigate") and isinstance(self.focused, Input):
+            return False
+        return True
 
     def _switch_to(self, screen_id: str) -> None:
         """Update ContentSwitcher and highlight the matching nav item."""
