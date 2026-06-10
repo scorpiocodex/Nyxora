@@ -14,6 +14,10 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.widgets import Button, DataTable, Label, Static
 
+from nyxora.tui.screens._shared_bg import (
+    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+)
+
 
 class BackupScreen(Static):
     """
@@ -32,6 +36,11 @@ class BackupScreen(Static):
     ]
 
     def compose(self) -> ComposeResult:
+        yield NyxTopBar([("BACKUP MANAGER", True), ("SECTION 3", False), ("OFFLINE", False)])
+        with Horizontal(classes="nyx-corners-top"):
+            yield NyxCornerInfo("LAST BACKUP", ["SEE LIST BELOW", "SHUTIL.COPY2"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("STORAGE", ["~/.nyxora/backups", "ENCRYPTED"])
         yield Static(" ◆  BACKUP MANAGEMENT", classes="screen-title")
         with Horizontal(id="action-bar"):
             yield Button("  CREATE BACKUP", id="btn-create", classes="primary")
@@ -42,6 +51,11 @@ class BackupScreen(Static):
             "\n  [dim]Loading backups…[/dim]",
             id="backup-table-wrap",
         )
+        with Horizontal(classes="nyx-corners-bot"):
+            yield NyxCornerInfo("FORMAT", ["AES SNAPSHOT", ".NYX.BAK"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("VERIFY", ["VAULTSTORE.OPEN", "HMAC CHECK"])
+        yield NyxBottomBar()
 
     def on_mount(self) -> None:
         self._load_backups()
@@ -168,55 +182,48 @@ class BackupScreen(Static):
         status = self.query_one("#backup-status", Static)
         status.update("  Verifying latest backup…")
         try:
+            from nyxora.cli.helpers import load_session
+            from nyxora.core.crypto_engine import CryptoEngine
+            from nyxora.core.vault_store import VaultStore
+            from nyxora.core.memory_guard import wipe_memory
+
+            session = load_session()
+            if session is None:
+                status.update(
+                    "  [red]Vault is locked — unlock first to verify.[/red]"
+                )
+                return
+
+            _, _vault_path, root_key = session
             backups = self._list_backups()
             if not backups:
                 status.update("  [#C89A30]No backups to verify.[/#C89A30]")
+                wipe_memory(root_key)
                 return
 
             latest_name = backups[0][0]
             backup_path = self._backup_dir() / latest_name
 
-            from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.vault_store import VaultStore
+            # Open the backup using the vault's root_key directly
+            engine = CryptoEngine()
+            store  = VaultStore(engine)
+            store.open(backup_path, root_key)
+            count = len(store.list_entries())
+            store.close()
+            wipe_memory(root_key)
 
-            # Attempt to open the backup with a minimal integrity probe
-            # We check the file is readable SQLite with the expected schema.
-            import sqlite3
-            conn = sqlite3.connect(str(backup_path))
-            tables = {
-                row[0]
-                for row in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                ).fetchall()
-            }
-            conn.close()
-
-            required = {"entries", "metadata", "audit_log"}
-            missing  = required - tables
-
-            if missing:
-                status.update(
-                    f"  [red]✗  Backup invalid — missing tables: "
-                    f"{', '.join(missing)}[/red]"
-                )
-                self.app.notify(
-                    "Backup verification FAILED.",
-                    severity="error",
-                    timeout=4,
-                )
-            else:
-                status.update(
-                    f"  [bold green]✓[/bold green]  "
-                    f"{latest_name} is valid."
-                )
-                self.app.notify(
-                    f"Backup verified: {latest_name}",
-                    title="◆ Verified",
-                    timeout=3,
-                )
+            status.update(
+                f"  [bold green]✓[/bold green]  "
+                f"{latest_name} is valid  ({count} entries)."
+            )
+            self.app.notify(
+                f"Verified: {latest_name}",
+                title="◆ Backup OK",
+                timeout=3,
+            )
 
         except Exception as exc:
-            status.update(f"  [red]Verify failed: {exc}[/red]")
+            status.update(f"  [red]✗  Verify failed: {exc}[/red]")
             self.app.notify(
                 f"Verify failed: {exc}",
                 severity="error",

@@ -14,6 +14,10 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Checkbox, Input, Label, Static
 
+from nyxora.tui.screens._shared_bg import (
+    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+)
+
 
 class GenerateScreen(Static):
     """
@@ -38,6 +42,15 @@ class GenerateScreen(Static):
         self._result = ""
 
     def compose(self) -> ComposeResult:
+        yield NyxTopBar([("GENERATOR", True), ("SECTION 6", False), ("CSPRNG", False)])
+        with Horizontal(classes="nyx-corners-top"):
+            yield NyxCornerInfo(
+                "ENTROPY SOURCE", ["secrets.choice()", "OS CSPRNG", "CRYPTOGRAPHIC"]
+            )
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo(
+                "CHARSET", ["UPPER+LOWER+DIGITS", "+SYMBOLS=94", "EFF WORDLIST"]
+            )
         yield Static(" ◆  GENERATE", classes="screen-title")
 
         # Mode selector
@@ -73,6 +86,12 @@ class GenerateScreen(Static):
         yield Static("", id="gen-strength")
         with Horizontal():
             yield Button("  COPY", id="btn-copy-gen", classes="primary")
+
+        with Horizontal(classes="nyx-corners-bot"):
+            yield NyxCornerInfo("ALGORITHM", ["UNIFORM RANDOM", "NO BIAS"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("CLIPBOARD", ["AUTO-CLEAR 30s", "PYPERCLIP"])
+        yield NyxBottomBar()
 
     def on_mount(self) -> None:
         self._set_mode("password")

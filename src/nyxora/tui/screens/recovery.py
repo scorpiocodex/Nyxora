@@ -9,8 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Input, Label, Static
+
+from nyxora.tui.screens._shared_bg import (
+    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+)
 
 
 class RecoveryScreen(Static):
@@ -35,10 +39,19 @@ class RecoveryScreen(Static):
         self._active_protocol = "totp"
 
     def compose(self) -> ComposeResult:
+        yield NyxTopBar([
+            ("EMERGENCY RECOVERY", True),
+            ("SECTION 4", False),
+            ("OFFLINE", False),
+        ], id="recovery-topbar")
+        with Horizontal(classes="nyx-corners-top"):
+            yield NyxCornerInfo("PROTOCOLS", ["TOTP: RFC 6238", "PYOTP", "BASE32"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("CAPSULE", ["ARGON2ID KDF", "XCHACHA20"])
         yield Static(" ◆  EMERGENCY RECOVERY", classes="screen-title")
         yield Static("", id="recovery-status-line")
 
-        # Protocol selector
+        # Protocol selector tabs
         with Horizontal(id="protocol-selector"):
             yield Button("1  TOTP 2FA",     id="btn-p-totp",    classes="primary")
             yield Button("2  Capsule",       id="btn-p-capsule")
@@ -46,50 +59,91 @@ class RecoveryScreen(Static):
 
         yield Static("", id="recovery-status")
 
-        # TOTP panel
-        with Vertical(id="panel-totp"):
-            yield Static("\n  [dim]TOTP Two-Factor Authentication[/dim]\n",
-                         classes="info-card-title")
-            yield Label("Account label  (e.g. your email)", classes="form-label")
-            yield Input(placeholder="nyxora@example.com", id="totp-label")
-            yield Button("  SETUP TOTP", id="btn-totp-setup", classes="primary")
-            yield Static("", id="totp-output")
+        # Main content area: left panel + right QR panel
+        with Horizontal(id="recovery-main"):
 
-        # Capsule panel  (hidden initially)
-        with Vertical(id="panel-capsule"):
-            yield Static("\n  [dim]Recovery Capsule[/dim]\n",
-                         classes="info-card-title")
-            yield Label("Capsule password  (different from vault password)",
-                        classes="form-label")
-            yield Input(placeholder="Capsule password…",
-                        password=True, id="capsule-pw")
-            yield Label("Confirm password", classes="form-label")
-            yield Input(placeholder="Confirm…",
-                        password=True, id="capsule-pw-confirm")
-            yield Label("Hint  (optional, stored in capsule)",
-                        classes="form-label")
-            yield Input(placeholder="Password hint…", id="capsule-hint")
-            yield Button("  CREATE CAPSULE", id="btn-capsule-create",
-                         classes="primary")
-            yield Static("", id="capsule-output")
+            # Left: all three protocol panels
+            with Vertical(id="recovery-left"):
 
-        # Shamir panel  (hidden initially)
-        with Vertical(id="panel-shamir"):
-            yield Static("\n  [dim]Shamir Secret Sharing[/dim]\n",
-                         classes="info-card-title")
-            yield Label("Total shares  (N)", classes="form-label")
-            yield Input(value="5", id="shamir-n")
-            yield Label("Threshold  (K required to reconstruct)",
-                        classes="form-label")
-            yield Input(value="3", id="shamir-k")
-            yield Label("Output directory", classes="form-label")
-            yield Input(
-                value=str(Path.home() / ".nyxora" / "shares"),
-                id="shamir-dir",
-            )
-            yield Button("  SPLIT SECRET", id="btn-shamir-split",
-                         classes="primary")
-            yield Static("", id="shamir-output")
+                # TOTP panel
+                with Vertical(id="panel-totp"):
+                    yield Static(
+                        "\n  [dim]TOTP Two-Factor Authentication[/dim]\n",
+                        classes="info-card-title",
+                    )
+                    yield Label(
+                        "Account label  (e.g. your email)",
+                        classes="form-label",
+                    )
+                    yield Input(placeholder="nyxora@example.com", id="totp-label")
+                    yield Button(
+                        "  SETUP TOTP", id="btn-totp-setup", classes="primary",
+                    )
+                    yield Static("", id="totp-status-msg")
+
+                # Capsule panel  (hidden initially)
+                with Vertical(id="panel-capsule"):
+                    yield Static(
+                        "\n  [dim]Recovery Capsule[/dim]\n",
+                        classes="info-card-title",
+                    )
+                    yield Label(
+                        "Capsule password  (different from vault password)",
+                        classes="form-label",
+                    )
+                    yield Input(placeholder="Capsule password…",
+                                password=True, id="capsule-pw")
+                    yield Label("Confirm password", classes="form-label")
+                    yield Input(placeholder="Confirm…",
+                                password=True, id="capsule-pw-confirm")
+                    yield Label(
+                        "Hint  (optional, stored in capsule)",
+                        classes="form-label",
+                    )
+                    yield Input(placeholder="Password hint…", id="capsule-hint")
+                    yield Button(
+                        "  CREATE CAPSULE", id="btn-capsule-create",
+                        classes="primary",
+                    )
+                    yield Static("", id="capsule-output")
+
+                # Shamir panel  (hidden initially)
+                with Vertical(id="panel-shamir"):
+                    yield Static(
+                        "\n  [dim]Shamir Secret Sharing[/dim]\n",
+                        classes="info-card-title",
+                    )
+                    yield Label("Total shares  (N)", classes="form-label")
+                    yield Input(value="5", id="shamir-n")
+                    yield Label(
+                        "Threshold  (K required to reconstruct)",
+                        classes="form-label",
+                    )
+                    yield Input(value="3", id="shamir-k")
+                    yield Label("Output directory", classes="form-label")
+                    yield Input(
+                        value=str(Path.home() / ".nyxora" / "shares"),
+                        id="shamir-dir",
+                    )
+                    yield Button(
+                        "  SPLIT SECRET", id="btn-shamir-split",
+                        classes="primary",
+                    )
+                    yield Static("", id="shamir-output")
+
+            # Right: QR code panel (only visible when TOTP active)
+            with Vertical(id="qr-panel"):
+                yield Static(
+                    "QR code will\nappear here\nafter SETUP TOTP",
+                    id="qr-placeholder",
+                )
+                yield Static("", id="totp-output")
+
+        with Horizontal(classes="nyx-corners-bot"):
+            yield NyxCornerInfo("SHAMIR", ["GF(2^8) FIELD", "N-OF-K SCHEME"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("RECOVERY", ["OFFLINE ONLY", "ZERO-KNOWLEDGE"])
+        yield NyxBottomBar()
 
     def on_mount(self) -> None:
         self._show_panel("totp")
@@ -130,6 +184,22 @@ class RecoveryScreen(Static):
                 f"  {tick(totp_ok)} TOTP    "
                 f"  {tick(capsule_ok)} Capsule    "
                 f"  {tick(shamir_ok)} Shamir shares"
+            )
+        except Exception:
+            pass
+
+        try:
+            tb = self.query_one("#recovery-topbar", NyxTopBar)
+            def _t(ok: bool, label: str) -> str:
+                c = "#C89A30" if ok else "#CC3333"
+                s = "✓" if ok else "✗"
+                return f"[{c}]{label}:{s}[/{c}]"
+            sep = "  [#0E1820]·[/#0E1820]  "
+            tb.update(
+                _t(totp_ok, "TOTP") + sep +
+                _t(capsule_ok, "CAPSULE") + sep +
+                _t(shamir_ok, "SHAMIR") + sep +
+                "[#1E2D3D]SECTION 4[/#1E2D3D]"
             )
         except Exception:
             pass
@@ -190,48 +260,77 @@ class RecoveryScreen(Static):
     # ── TOTP setup ───────────────────────────────────────────────
 
     def _do_totp_setup(self) -> None:
-        out = self.query_one("#totp-output", Static)
-        label_val = self.query_one("#totp-label", Input).value.strip() \
-                    or "nyxora"
-        out.update("  Generating TOTP secret…")
+        status_msg = self.query_one("#totp-status-msg", Static)
+        out        = self.query_one("#totp-output",     Static)
+
+        from nyxora.cli.helpers import load_session as _ls
+        if _ls() is None:
+            status_msg.update(
+                "  [red]Vault is locked — unlock first.[/red]"
+            )
+            return
+
+        label_val = (
+            self.query_one("#totp-label", Input).value.strip()
+            or "nyxora"
+        )
+        status_msg.update("  [#C89A30]Generating TOTP secret…[/#C89A30]")
+
         try:
             from nyxora.core.recovery_core import RecoveryManager
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.cli.helpers import open_vault
-            from nyxora.core.memory_guard import wipe_memory
+            from nyxora.cli.helpers        import open_vault
+            from nyxora.core.memory_guard  import wipe_memory
 
             engine   = CryptoEngine()
             recovery = RecoveryManager(engine)
             secret   = recovery.generate_totp_secret()
             uri      = recovery.get_totp_uri(secret, label_val)
 
-            # Render QR in half-block format
             qr_lines = _render_qr(uri)
 
-            # Persist to vault metadata
             store, _, root_key, _ = open_vault(engine)
             store.set_metadata_value("totp_secret", secret)
             store.close()
             wipe_memory(root_key)
 
-            lines = ["\n  [bold #C89A30]TOTP Secret:[/bold #C89A30]\n"]
-            lines.append(f"  {secret}\n\n")
-            lines.extend(qr_lines)
-            lines.append(
-                f"\n  [dim]URI: {uri[:60]}…[/dim]\n"
-                f"  [dim]Scan with your authenticator app.[/dim]\n"
-                f"  [bold green]✓  Saved to vault.[/bold green]\n"
+            # Hide placeholder, show QR in right panel
+            try:
+                ph = self.query_one("#qr-placeholder", Static)
+                ph.update("")
+            except Exception:
+                pass
+
+            # Status message in left panel
+            status_msg.update(
+                f"  [bold #C89A30]Secret:[/bold #C89A30] "
+                f"[dim]{secret}[/dim]\n"
+                f"  [bold green]✓[/bold green]  Saved to vault.\n"
+                f"  [dim]Scan QR with your authenticator app.[/dim]"
             )
-            out.update("".join(lines))
+
+            # Full QR — strip trailing newlines, join cleanly
+            qr_text = "".join(
+                line.rstrip("\n") + "\n" for line in qr_lines
+            )
+            out.update(qr_text)
             self._refresh_status()
 
         except Exception as exc:
-            out.update(f"  [red]TOTP setup failed: {exc}[/red]")
+            status_msg.update(
+                f"  [red]TOTP setup failed: {exc}[/red]"
+            )
 
     # ── Capsule create ───────────────────────────────────────────
 
     def _do_capsule_create(self) -> None:
         out  = self.query_one("#capsule-output", Static)
+
+        from nyxora.cli.helpers import load_session as _ls
+        if _ls() is None:
+            out.update("  [red]Vault is locked — unlock first (press 1).[/red]")
+            return
+
         pw   = self.query_one("#capsule-pw",         Input).value
         conf = self.query_one("#capsule-pw-confirm",  Input).value
         hint = self.query_one("#capsule-hint",        Input).value.strip()
@@ -287,6 +386,12 @@ class RecoveryScreen(Static):
 
     def _do_shamir_split(self) -> None:
         out = self.query_one("#shamir-output", Static)
+
+        from nyxora.cli.helpers import load_session as _ls
+        if _ls() is None:
+            out.update("  [red]Vault is locked — unlock first (press 1).[/red]")
+            return
+
         try:
             n = int(self.query_one("#shamir-n", Input).value.strip())
             k = int(self.query_one("#shamir-k", Input).value.strip())
@@ -352,14 +457,14 @@ class RecoveryScreen(Static):
 
 def _render_qr(uri: str) -> list[str]:
     """
-    Render a QR code for the given URI using Unicode half-block chars.
-    Returns a list of Rich-markup strings (one per output line).
+    Render a QR code using Unicode half-block chars.
+    Returns plain strings (no Rich markup) — white CSS bg handles contrast.
     """
     try:
         import qrcode
         from qrcode.constants import ERROR_CORRECT_L
         qr = qrcode.QRCode(
-            version=1,
+            version=None,
             error_correction=ERROR_CORRECT_L,
             box_size=1,
             border=2,
@@ -368,24 +473,37 @@ def _render_qr(uri: str) -> list[str]:
         qr.make(fit=True)
         matrix = qr.get_matrix()
         rows   = len(matrix)
+        cols   = len(matrix[0]) if rows > 0 else 0
         lines  = []
-        for y in range(0, rows, 2):
-            line = "  [on white] "
-            for x in range(len(matrix[y])):
+
+        for y in range(0, rows - (rows % 2), 2):
+            line = ""
+            for x in range(cols):
                 top = matrix[y][x]
                 bot = matrix[y + 1][x] if (y + 1) < rows else False
                 if top and bot:
-                    line += "[black on white]█[/black on white]"
+                    line += "█"
                 elif top and not bot:
-                    line += "[black on white]▀[/black on white]"
+                    line += "▀"
                 elif not top and bot:
-                    line += "[black on white]▄[/black on white]"
+                    line += "▄"
                 else:
-                    line += "[white on white] [/white on white]"
-            line += " [/on white]\n"
-            lines.append(line)
+                    line += " "
+            lines.append(line + "\n")
+
+        # Handle odd last row
+        if rows % 2 == 1:
+            line = ""
+            for x in range(cols):
+                line += "▀" if matrix[rows - 1][x] else " "
+            lines.append(line + "\n")
+
         return lines
+
     except ImportError:
-        return ["  [dim]Install qrcode for QR rendering.[/dim]\n"]
+        return [
+            "\n  qrcode package not installed.\n",
+            "  pip install qrcode\n",
+        ]
     except Exception as exc:
-        return [f"  [dim]QR error: {exc}[/dim]\n"]
+        return [f"\n  QR error: {exc}\n"]

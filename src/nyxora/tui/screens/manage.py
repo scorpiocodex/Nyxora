@@ -17,6 +17,9 @@ from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.widgets import Button, Input, ListItem, ListView, Static
 
 from nyxora.core.vault_store import EntryRecord
+from nyxora.tui.screens._shared_bg import (
+    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+)
 
 
 # ── Entry list item ───────────────────────────────────────────────
@@ -70,10 +73,26 @@ class ManageScreen(Static):
         self._selected: Optional[EntryRecord]   = None
         self._show_password: bool               = False
         self._delete_pending: bool              = False
+        self._load_pending: bool                = False
 
     # ── Layout ───────────────────────────────────────────────────
 
+    def _build_manage_topbar(self) -> list[tuple[str, bool]]:
+        count    = len(self._entries)
+        filtered = len(self._filtered)
+        label    = f"{filtered}/{count} ENTRIES" if count > 0 else "0 ENTRIES"
+        return [
+            ("VAULT:UNLOCKED", True),
+            (label, count > 0),
+            ("SECTION 2", False),
+        ]
+
     def compose(self) -> ComposeResult:
+        yield NyxTopBar(self._build_manage_topbar())
+        with Horizontal(classes="nyx-corners-top"):
+            yield NyxCornerInfo("ENTRIES", ["TOTAL: —", "FILTERED: —", "SELECTED: —"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("SESSION", ["ACTIVE", "KEYRING:OK", "ENCRYPTED"])
         yield Static(" ◆  MANAGE VAULT", classes="screen-title")
         with Horizontal(id="manage-layout"):
             # Left: entry list
@@ -95,25 +114,79 @@ class ManageScreen(Static):
                     yield Button("EDIT",   id="btn-edit")
                     yield Button("TOTP",   id="btn-totp")
                     yield Button("DELETE", id="btn-delete", classes="danger")
+        with Horizontal(classes="nyx-corners-bot"):
+            yield NyxCornerInfo("CIPHER", ["XCHACHA20-POLY1305"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("VAULT", ["vault.nyx", "OFFLINE"])
+        yield NyxBottomBar()
 
     # ── Lifecycle ────────────────────────────────────────────────
 
     def on_mount(self) -> None:
         self._load_entries()
         self.set_interval(1.0, self._tick)
+        self._focus_list()
 
     def on_show(self) -> None:
-        """Reload entries whenever the user navigates back here."""
+        """Reload entries — debounced to prevent double-firing."""
+        if self._load_pending:
+            return
+        self._load_pending = True
+        self.set_timer(0.05, self._deferred_load)
+
+    def _deferred_load(self) -> None:
+        """Actual load, runs after Textual has settled."""
+        self._load_pending = False
+        # Clear any stale search text (e.g. "2" typed during
+        # navigation before priority=True was set)
+        try:
+            inp = self.query_one("#entry-search", Input)
+            if inp.value and not inp.has_focus:
+                inp.value = ""
+        except Exception:
+            pass
         self._load_entries()
+        self._refresh_topbar()
+        self._focus_list()
+
+    def _focus_list(self) -> None:
+        """Blur the search input and focus the entry list."""
+        try:
+            self.query_one("#entry-search", Input).blur()
+        except Exception:
+            pass
+        try:
+            self.query_one("#entry-items", ListView).focus()
+        except Exception:
+            pass
 
     # ── Data loading ─────────────────────────────────────────────
 
     def _load_entries(self) -> None:
-        """Load all entries from the vault."""
+        """Load all entries from the vault and refresh display."""
+        self._entries  = []
+        self._filtered = []
+
+        try:
+            from nyxora.cli.helpers import load_session
+            if load_session() is None:
+                try:
+                    self.query_one("#entry-detail", Static).update(
+                        "\n  [dim]Vault is locked.\n"
+                        "  Press [bold]1[/bold] to unlock.[/dim]"
+                    )
+                except Exception:
+                    pass
+                self._rebuild_list()
+                self._refresh_topbar()
+                return
+        except Exception:
+            pass
+
         try:
             from nyxora.cli.helpers import open_vault
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.memory_guard import wipe_memory
+            from nyxora.core.memory_guard  import wipe_memory
 
             engine = CryptoEngine()
             store, _, root_key, _ = open_vault(engine)
@@ -121,13 +194,8 @@ class ManageScreen(Static):
             store.close()
             wipe_memory(root_key)
 
-            self._apply_filter(
-                self.query_one("#entry-search", Input).value
-            )
-
-        except Exception:
-            self._entries  = []
-            self._filtered = []
+        except BaseException:
+            self._entries = []
             try:
                 self.query_one("#entry-detail", Static).update(
                     "\n  [dim]Vault is locked or unavailable.\n"
@@ -135,7 +203,43 @@ class ManageScreen(Static):
                 )
             except Exception:
                 pass
-            self._rebuild_list()
+
+        self._apply_filter(
+            self.query_one("#entry-search", Input).value
+            if self._widgets_ready() else ""
+        )
+        self._refresh_topbar()
+
+    def _widgets_ready(self) -> bool:
+        """Safe check for whether widgets are available."""
+        try:
+            self.query_one("#entry-search", Input)
+            return True
+        except Exception:
+            return False
+
+    def _refresh_topbar(self) -> None:
+        """Update the top bar with current entry counts."""
+        try:
+            from nyxora.tui.screens._shared_bg import NyxTopBar
+            tb = self.query_one(NyxTopBar)
+            count    = len(self._entries)
+            filtered = len(self._filtered)
+            label = (
+                f"{filtered}/{count} ENTRIES"
+                if count > 0 else "0 ENTRIES"
+            )
+            active = count > 0
+            c = "#C89A30" if active else "#1E2D3D"
+            tb.update(
+                f"[#C89A30]VAULT:UNLOCKED[/#C89A30]"
+                f"  [#0E1820]·[/#0E1820]  "
+                f"[{c}]{label}[/{c}]"
+                f"  [#0E1820]·[/#0E1820]  "
+                f"[#1E2D3D]SECTION 2[/#1E2D3D]"
+            )
+        except Exception:
+            pass
 
     def _apply_filter(self, query: str) -> None:
         """Filter entries by search query and rebuild the ListView."""
@@ -157,6 +261,9 @@ class ManageScreen(Static):
         try:
             lv = self.query_one("#entry-items", ListView)
             lv.clear()
+            # Force remove any lingering children
+            for child in list(lv.children):
+                child.remove()
             for entry in self._filtered:
                 lv.append(EntryItem(entry))
 
@@ -175,6 +282,10 @@ class ManageScreen(Static):
                     f"\n  Select an entry from the list.\n"
                     f"  [dim]{count} {'entry' if count == 1 else 'entries'}[/dim]"
                 )
+            except Exception:
+                pass
+            try:
+                self._focus_list()
             except Exception:
                 pass
         except Exception:
@@ -320,6 +431,7 @@ class ManageScreen(Static):
         """Called when AddEntryScreen or EditEntryScreen dismisses."""
         if success:
             self._load_entries()
+            self._refresh_topbar()
             self.app.notify("Entry saved.", title="◆ Saved", timeout=2)
 
     def action_copy_pw(self) -> None:
@@ -414,6 +526,7 @@ class ManageScreen(Static):
                 timeout=3,
             )
             self._load_entries()
+            self._refresh_topbar()
 
         except Exception as exc:
             self.app.notify(

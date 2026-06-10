@@ -258,20 +258,14 @@ ContentSwitcher {
 
 /* ── Vault status ─────────────────────────────────────────────── */
 
+/* Status classes — colour only, no borders or size overrides */
+/* Applied to #app-header and vault status badge */
 .status-unlocked {
     color: #2A7A4A;
-    background: #060E08;
-    border: tall #0A2014;
-    height: 1;
-    padding: 0 1;
 }
 
 .status-locked {
     color: #CC3333;
-    background: #0A0606;
-    border: tall #2A0808;
-    height: 1;
-    padding: 0 1;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────── */
@@ -610,4 +604,143 @@ ScrollBar {
 
 ScrollBar:hover {
     color: #344252;
+}
+
+/* ── Shared screen chrome (Obsidian Tactical v3) ─────────────── */
+
+NyxTopBar {
+    width: 100%;
+    height: 1;
+    background: #04060C;
+    color: #1E2D3D;
+    text-align: center;
+    padding: 0 1;
+}
+
+NyxBottomBar {
+    width: 100%;
+    height: 1;
+    background: #04060C;
+    color: #1E2D3D;
+    text-align: center;
+    padding: 0 1;
+}
+
+NyxBackground {
+    width: 100%;
+    height: 100%;
+    color: #141E28;
+    background: transparent;
+    padding: 0 1;
+}
+
+NyxCornerInfo {
+    width: auto;
+    height: auto;
+    color: #0E1820;
+    background: transparent;
+    padding: 0 1;
+}
+
+NyxSep {
+    width: 100%;
+    height: 1;
+    background: transparent;
+    color: #C89A30;
+    text-align: center;
+    margin: 0 0 1 0;
+}
+
+.nyx-corners-top {
+    width: 100%;
+    height: auto;
+    background: transparent;
+}
+
+.nyx-corners-bot {
+    width: 100%;
+    height: auto;
+    background: transparent;
+}
+
+.corner-spacer {
+    width: 1fr;
+    height: 1;
+    background: transparent;
+}
+
+/* UnlockScreen / CreateVaultScreen overlay layout */
+#unlock-ui {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+#create-ui {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+#unlock-center {
+    width: 100%;
+    height: 1fr;
+    align: center middle;
+}
+#create-center {
+    width: 100%;
+    height: 1fr;
+    align: center middle;
+}
+#unlock-box {
+    width: 52;
+    height: auto;
+    background: #08111A;
+    border: tall #1C2A3A;
+    padding: 2 3;
+}
+#create-box {
+    width: 52;
+    height: auto;
+    background: #08111A;
+    border: tall #1C2A3A;
+    padding: 2 3;
+}
+
+/* ── Recovery screen QR split layout ─────────────────────── */
+
+#recovery-main {
+    width: 100%;
+    height: 1fr;
+}
+
+#recovery-left {
+    width: 1fr;
+    height: 100%;
+    overflow-y: auto;
+}
+
+#qr-panel {
+    width: 46;
+    height: 100%;
+    border-left: tall #1A2535;
+    background: #FFFFFF;
+    align: center top;
+    padding: 1 0 0 0;
+    overflow: hidden hidden;
+}
+
+#qr-placeholder {
+    color: #888888;
+    text-align: center;
+    width: auto;
+    height: auto;
+    background: #FFFFFF;
+    margin-top: 2;
+}
+
+#totp-output {
+    width: auto;
+    height: auto;
+    background: #FFFFFF;
+    color: #000000;
+    padding: 0;
 }

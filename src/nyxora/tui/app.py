@@ -32,17 +32,13 @@ from textual.widgets import (
 )
 
 from nyxora import __version__
-
-
-# ── Placeholder screen shown before real screens are wired ──────
-
-class PlaceholderScreen(Static):
-    """Temporary placeholder — replaced in Prompt 12 wiring step."""
-    def __init__(self, name: str, **kwargs) -> None:
-        super().__init__(
-            f"\n  ◆ {name.upper()}  —  Coming in v3.0.0 Nexus\n",
-            **kwargs,
-        )
+from nyxora.tui.screens.vault    import VaultScreen
+from nyxora.tui.screens.manage   import ManageScreen
+from nyxora.tui.screens.backup   import BackupScreen
+from nyxora.tui.screens.recovery import RecoveryScreen
+from nyxora.tui.screens.updates  import UpdatesScreen
+from nyxora.tui.screens.generate import GenerateScreen
+from nyxora.tui.screens.security import SecurityScreen
 
 
 # ── Sidebar nav item ─────────────────────────────────────────────
@@ -81,13 +77,20 @@ class NyxoraApp(App):
     CSS_PATH = "theme.tcss"
 
     BINDINGS = [
-        Binding("1", "navigate('vault')",    "Vault",    show=False),
-        Binding("2", "navigate('manage')",   "Manage",   show=False),
-        Binding("3", "navigate('backup')",   "Backup",   show=False),
-        Binding("4", "navigate('recovery')", "Recovery", show=False),
-        Binding("5", "navigate('updates')",  "Updates",  show=False),
-        Binding("6", "navigate('generate')", "Generate", show=False),
-        Binding("7", "navigate('security')", "Security", show=False),
+        Binding("1", "navigate('vault')",    "Vault",
+                show=False, priority=True),
+        Binding("2", "navigate('manage')",   "Manage",
+                show=False, priority=True),
+        Binding("3", "navigate('backup')",   "Backup",
+                show=False, priority=True),
+        Binding("4", "navigate('recovery')", "Recovery",
+                show=False, priority=True),
+        Binding("5", "navigate('updates')",  "Updates",
+                show=False, priority=True),
+        Binding("6", "navigate('generate')", "Generate",
+                show=False, priority=True),
+        Binding("7", "navigate('security')", "Security",
+                show=False, priority=True),
         Binding("q", "quit",                 "Quit",     show=True),
         Binding("?", "show_help",            "Help",     show=True),
     ]
@@ -123,13 +126,13 @@ class NyxoraApp(App):
                 id="workspace",
                 initial="screen-manage",
             ):
-                yield PlaceholderScreen("vault",    id="screen-vault")
-                yield PlaceholderScreen("manage",   id="screen-manage")
-                yield PlaceholderScreen("backup",   id="screen-backup")
-                yield PlaceholderScreen("recovery", id="screen-recovery")
-                yield PlaceholderScreen("updates",  id="screen-updates")
-                yield PlaceholderScreen("generate", id="screen-generate")
-                yield PlaceholderScreen("security", id="screen-security")
+                yield VaultScreen(   id="screen-vault")
+                yield ManageScreen(  id="screen-manage")
+                yield BackupScreen(  id="screen-backup")
+                yield RecoveryScreen(id="screen-recovery")
+                yield UpdatesScreen( id="screen-updates")
+                yield GenerateScreen(id="screen-generate")
+                yield SecurityScreen(id="screen-security")
         yield Footer()
 
     def _build_header(self) -> Static:
@@ -261,24 +264,15 @@ class NyxoraApp(App):
     def action_quit(self) -> None:
         if self.exe_mode:
             try:
-                from nyxora.cli.helpers import load_session
+                from nyxora.cli.helpers import load_session, clear_session
                 from nyxora.core.memory_guard import wipe_memory
-                import keyring as _kr
 
                 session = load_session()
                 if session is not None:
-                    _, _vp, _rk = session
-                    wipe_memory(_rk)
+                    _, _vp, root_key = session
+                    wipe_memory(root_key)
 
-                try:
-                    _kr.delete_password("nyxora", "session")
-                except Exception:
-                    pass
-
-                from pathlib import Path as _Path
-                session_file = _Path.home() / ".nyxora" / "session.key"
-                if session_file.exists():
-                    session_file.unlink(missing_ok=True)
+                clear_session()
 
             except Exception:
                 pass
@@ -287,7 +281,14 @@ class NyxoraApp(App):
 
 # ── CLI entry point (used by `nyx tui` command) ──────────────────
 
-def launch_tui(start_screen: str = "manage") -> None:
-    """Called by src/nyxora/cli/commands/tui_cmd.py."""
+def launch_tui(start_screen: str | None = None) -> None:
+    """
+    Called by src/nyxora/cli/commands/tui_cmd.py.
+    Routes to the correct screen based on vault state,
+    same as the exe launcher.
+    """
+    if start_screen is None:
+        from nyxora.tui.launcher import _resolve_start_screen
+        start_screen = _resolve_start_screen()
     app = NyxoraApp(start_screen=start_screen, exe_mode=False)
     app.run()

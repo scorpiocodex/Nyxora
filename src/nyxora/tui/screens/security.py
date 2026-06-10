@@ -9,8 +9,12 @@ import math
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Input, Label, Static
+
+from nyxora.tui.screens._shared_bg import (
+    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+)
 
 
 class SecurityScreen(Static):
@@ -31,6 +35,15 @@ class SecurityScreen(Static):
         self._history: list[tuple[str, str]] = []  # (masked, grade)
 
     def compose(self) -> ComposeResult:
+        yield NyxTopBar([
+            ("STRENGTH CHECKER", True),
+            ("SECTION 7", False),
+            ("LOCAL ONLY", False),
+        ])
+        with Horizontal(classes="nyx-corners-top"):
+            yield NyxCornerInfo("ANALYSIS", ["LOCAL ONLY", "NO NETWORK", "NO STORAGE"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("ALGORITHM", ["SHANNON ENTROPY", "CHARSET SCORING"])
         yield Static(" ◆  SECURITY — STRENGTH CHECKER", classes="screen-title")
         yield Static(
             "\n  [dim]Paste a password to analyse its strength.[/dim]\n"
@@ -46,6 +59,11 @@ class SecurityScreen(Static):
         yield Static("", id="sec-result")
         yield Static("", id="sec-history-title")
         yield Static("", id="sec-history")
+        with Horizontal(classes="nyx-corners-bot"):
+            yield NyxCornerInfo("PRIVACY", ["NOTHING STORED", "SESSION ONLY"])
+            yield Static("", classes="corner-spacer")
+            yield NyxCornerInfo("GRADES", ["A+/A/B/C/D/F", "ENTROPY BITS"])
+        yield NyxBottomBar()
 
     def on_mount(self) -> None:
         self.query_one("#sec-input", Input).focus()

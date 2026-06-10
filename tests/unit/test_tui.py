@@ -1,8 +1,6 @@
 """Smoke tests for the TUI — verify instantiation without launching."""
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock
 from nyxora.core.vault_store import EntryRecord
 import time
 
@@ -28,41 +26,6 @@ def test_nyxora_app_instantiation():
     from nyxora.tui.app import NyxoraApp
     app = NyxoraApp(start_screen="manage", exe_mode=False)
     assert app is not None
-
-
-def test_vault_browser_instantiation():
-    """VaultBrowserScreen can be created without errors."""
-    from nyxora.tui.screens.vault_browser import VaultBrowserScreen
-    entries = _make_entries()
-    screen = VaultBrowserScreen(
-        entries=entries,
-        vault_path="/fake/vault.nyx",
-        session_id="abc123def456",
-    )
-    assert screen is not None
-
-
-def test_audit_screen_instantiation():
-    """AuditScreen can be created without errors."""
-    from nyxora.tui.screens.audit_screen import AuditScreen
-    entries = _make_entries()
-    screen = AuditScreen(entries=entries)
-    assert screen is not None
-
-
-def test_search_screen_instantiation():
-    """SearchScreen can be created without errors."""
-    from nyxora.tui.screens.search_overlay import SearchScreen
-    screen = SearchScreen()
-    assert screen is not None
-
-
-def test_entry_list_item_instantiation():
-    """EntryListItem can be created from an EntryRecord."""
-    from nyxora.tui.screens.vault_browser import EntryListItem
-    entries = _make_entries()
-    item = EntryListItem(entries[0])
-    assert item.record.title == "GitHub"
 
 
 def test_unlock_screen_instantiation():
@@ -149,6 +112,57 @@ def test_security_screen_instantiation():
     from nyxora.tui.screens.security import SecurityScreen
     screen = SecurityScreen()
     assert screen is not None
+
+
+def test_wired_app_composes_all_screens():
+    """NyxoraApp with wired screens can be instantiated."""
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.vault    import VaultScreen
+    from nyxora.tui.screens.manage   import ManageScreen
+    from nyxora.tui.screens.backup   import BackupScreen
+    from nyxora.tui.screens.recovery import RecoveryScreen
+    from nyxora.tui.screens.updates  import UpdatesScreen
+    from nyxora.tui.screens.generate import GenerateScreen
+    from nyxora.tui.screens.security import SecurityScreen
+
+    app = NyxoraApp(start_screen="manage", exe_mode=False)
+    assert app is not None
+    # All screen classes must be importable and instantiable
+    assert VaultScreen()    is not None
+    assert ManageScreen()   is not None
+    assert BackupScreen()   is not None
+    assert RecoveryScreen() is not None
+    assert UpdatesScreen()  is not None
+    assert GenerateScreen() is not None
+    assert SecurityScreen() is not None
+
+
+def test_nyx_top_bar():
+    """NyxTopBar can be created with items."""
+    from nyxora.tui.screens._shared_bg import NyxTopBar
+    bar = NyxTopBar([("VAULT:LOCKED", True), ("OFFLINE", False)])
+    assert bar is not None
+
+
+def test_nyx_bottom_bar():
+    """NyxBottomBar can be created."""
+    from nyxora.tui.screens._shared_bg import NyxBottomBar
+    bar = NyxBottomBar()
+    assert bar is not None
+
+
+def test_nyx_background():
+    """NyxBackground can be created."""
+    from nyxora.tui.screens._shared_bg import NyxBackground
+    bg = NyxBackground()
+    assert bg is not None
+
+
+def test_nyx_corner_info():
+    """NyxCornerInfo can be created."""
+    from nyxora.tui.screens._shared_bg import NyxCornerInfo
+    ci = NyxCornerInfo("CIPHER", ["XCHACHA20", "ARGON2ID"])
+    assert ci is not None
 
 
 def test_tui_cmd_no_textual(monkeypatch):

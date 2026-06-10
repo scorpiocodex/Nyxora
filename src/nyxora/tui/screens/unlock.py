@@ -1,75 +1,214 @@
 """
 Nyxora TUI v3.0.0 — UnlockScreen and CreateVaultScreen.
-
-These are pushed as full-screen overlays by NyxoraApp.on_mount()
-when the exe launches without an active session.
-
-UnlockScreen   — shown when vault exists but is locked
-CreateVaultScreen — shown when no vault file exists yet
+Obsidian Tactical design with ambient background.
 """
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
+
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical, Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
+from nyxora.tui.screens._shared_bg import (
+    BG_PATTERN, NyxBackground, NyxBottomBar,
+    NyxCornerInfo, NyxSep, NyxTopBar,
+)
 
-# ── Shared helpers ───────────────────────────────────────────────
 
 def _get_default_vault_path() -> Path:
     return Path.home() / ".nyxora" / "vault.nyx"
 
 
-# ── Unlock screen ────────────────────────────────────────────────
+def _read_kdf_salt(vault_path: Path) -> bytes | None:
+    salt_path = vault_path.parent / (vault_path.stem + ".salt")
+    try:
+        return salt_path.read_bytes() if salt_path.exists() else None
+    except Exception:
+        return None
+
+
+# ── Unlock screen ─────────────────────────────────────────────────
 
 class UnlockScreen(Screen):
-    """
-    Full-screen vault unlock overlay.
+    """Full-screen vault unlock overlay with Obsidian Tactical design."""
 
-    Shown by NyxoraApp when the vault exists but no session is active.
-    On success, dismisses itself; the app then shows the main layout.
-    On failure, shows an inline error and allows retry.
-    """
+    BINDINGS = [Binding("escape", "app.quit", "Quit", show=True)]
 
-    BINDINGS = [
-        Binding("escape", "app.quit", "Quit", show=True),
-    ]
+    DEFAULT_CSS = """
+    UnlockScreen {
+        background: #060810;
+    }
+    #unlock-center {
+        width: 100%;
+        height: 1fr;
+        align: center middle;
+    }
+    #unlock-box {
+        width: 52;
+        height: auto;
+        background: #08111A;
+        border: tall #1C2A3A;
+        padding: 2 3;
+        align: center middle;
+    }
+    #unlock-box-top-accent {
+        width: 100%;
+        height: 1;
+        background: transparent;
+        color: #C89A30;
+        text-align: center;
+        margin-bottom: 1;
+    }
+    #unlock-icon {
+        width: 100%;
+        text-align: center;
+        color: #C89A30;
+        margin-bottom: 1;
+    }
+    #unlock-title {
+        width: 100%;
+        text-align: center;
+        color: #C89A30;
+        text-style: bold;
+        margin-bottom: 0;
+    }
+    #unlock-subtitle {
+        width: 100%;
+        text-align: center;
+        color: #243342;
+        margin-bottom: 1;
+    }
+    #unlock-ver {
+        width: 100%;
+        text-align: center;
+        color: #3A4A2A;
+        margin-bottom: 1;
+    }
+    #unlock-password {
+        width: 100%;
+        margin-bottom: 0;
+    }
+    #unlock-error {
+        width: 100%;
+        color: #9A3A3A;
+        min-height: 1;
+    }
+    #unlock-btns {
+        width: 100%;
+        height: auto;
+        margin-top: 1;
+    }
+    #btn-unlock {
+        width: 1fr;
+    }
+    #btn-quit-unlock {
+        width: 8;
+    }
+    #unlock-hint {
+        width: 100%;
+        text-align: center;
+        color: #141E28;
+        margin-top: 1;
+    }
+    .nyx-corners-top {
+        width: 100%;
+        height: auto;
+    }
+    .nyx-corners-bot {
+        width: 100%;
+        height: auto;
+    }
+    .corner-spacer {
+        width: 1fr;
+        height: 1;
+    }
+    """
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="unlock-box"):
-            yield Static(
-                "\n  ◆  NYXORA\n",
-                id="unlock-icon",
-            )
-            yield Static("Tactical Secrets Vault", id="unlock-title")
-            yield Static(
-                "Enter your master password to unlock",
-                id="unlock-subtitle",
-            )
-            yield Input(
-                placeholder="Master password…",
-                password=True,
-                id="unlock-password",
-            )
-            yield Static("", id="unlock-error", classes="form-error")
-            with Horizontal():
-                yield Button(
-                    "  UNLOCK",
-                    id="btn-unlock",
-                    classes="primary",
+        from nyxora import __version__
+
+        with Vertical(id="unlock-ui"):
+            yield NyxTopBar([
+                ("VAULT:LOCKED", True),
+                ("SESSION:CLEARED", False),
+                ("KEYRING:ACTIVE", False),
+                ("OFFLINE", True),
+            ])
+
+            # Corner info top
+            with Horizontal(classes="nyx-corners-top"):
+                yield NyxCornerInfo(
+                    "CIPHER SUITE",
+                    ["XCHACHA20-POLY1305", "ARGON2ID · 64MB", "AES-256-GCM"],
                 )
-                yield Button(
-                    "  QUIT",
-                    id="btn-quit-unlock",
+                yield Static("", classes="corner-spacer")
+                yield NyxCornerInfo(
+                    "SESSION STATUS",
+                    ["KEYRING: ACTIVE", "SESSION: NONE", "VAULT: LOCKED"],
                 )
+
+            # Centre form
+            with Vertical(id="unlock-center"):
+                with Vertical(id="unlock-box"):
+                    yield Static(
+                        "[#C89A30]──────────────────────────────[/#C89A30]",
+                        id="unlock-box-top-accent",
+                    )
+                    yield Static(
+                        "[bold #C89A30]◆  NYXORA[/bold #C89A30]",
+                        id="unlock-icon",
+                    )
+                    yield Static(
+                        "[bold]Tactical Secrets Vault[/bold]",
+                        id="unlock-title",
+                    )
+                    yield Static(
+                        "Enter your master password to unlock",
+                        id="unlock-subtitle",
+                    )
+                    yield Static(
+                        f"[#1A2838]v{__version__} · NEXUS[/#1A2838]",
+                        id="unlock-ver",
+                    )
+                    yield NyxSep()
+                    yield Input(
+                        placeholder="Master password…",
+                        password=True,
+                        id="unlock-password",
+                    )
+                    yield Static("", id="unlock-error")
+                    with Horizontal(id="unlock-btns"):
+                        yield Button(
+                            "⬡  UNLOCK VAULT",
+                            id="btn-unlock",
+                            classes="primary",
+                        )
+                        yield Button("QUIT", id="btn-quit-unlock")
+                    yield Static(
+                        "[#0E1820]OFFLINE  ·  ZERO-KNOWLEDGE  ·  ENCRYPTED[/#0E1820]",
+                        id="unlock-hint",
+                    )
+
+            # Corner info bottom
+            with Horizontal(classes="nyx-corners-bot"):
+                yield NyxCornerInfo(
+                    "VAULT PATH",
+                    ["~/.nyxora/vault.nyx", "32-BYTE SALT", "SCHEMA v2"],
+                )
+                yield Static("", classes="corner-spacer")
+                yield NyxCornerInfo(
+                    "BUILD INFO",
+                    [f"NYXORA v{__version__}", "NEXUS RELEASE", "SCORPIOCODEX"],
+                )
+
+            yield NyxBottomBar()
 
     def on_mount(self) -> None:
         self.query_one("#unlock-password", Input).focus()
-
-    # ── Events ──────────────────────────────────────────────────
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "unlock-password":
@@ -81,46 +220,54 @@ class UnlockScreen(Screen):
         elif event.button.id == "btn-quit-unlock":
             self.app.exit()
 
-    # ── Unlock logic ─────────────────────────────────────────────
-
     def _attempt_unlock(self) -> None:
-        pw_input = self.query_one("#unlock-password", Input)
-        error_label = self.query_one("#unlock-error", Static)
-        password = pw_input.value.strip()
+        pw_input    = self.query_one("#unlock-password", Input)
+        error_label = self.query_one("#unlock-error",   Static)
+        password    = pw_input.value.strip()
 
         if not password:
-            error_label.update("  Password cannot be empty.")
+            error_label.update("  [red]Password cannot be empty.[/red]")
             pw_input.focus()
             return
 
-        error_label.update("  Unlocking…")
+        error_label.update("  [#C89A30]Deriving key…[/#C89A30]")
 
         try:
             vault_path = _get_default_vault_path()
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.vault_store import VaultStore
-            from nyxora.core.session_core import SessionManager
+            from nyxora.core.vault_store   import VaultStore
+            from nyxora.core.memory_guard  import wipe_memory
+            from nyxora.cli.helpers        import save_session
 
             engine = CryptoEngine()
-            store = VaultStore(engine)
-            root_key = store.open(vault_path, password)
+            salt   = _read_kdf_salt(vault_path)
+            if salt is None:
+                error_label.update(
+                    "  [red]Salt not found. Re-initialise with 'nyx vault init'.[/red]"
+                )
+                return
+
+            root_key = engine.derive_key(password, salt)
+            store    = VaultStore(engine)
+            store.open(vault_path, root_key)
             store.close()
 
-            sm = SessionManager()
-            sm.create_session(vault_path, password, root_key)
-
-            from nyxora.core.memory_guard import wipe_memory
+            session_id = str(uuid.uuid4())
+            save_session(session_id, str(vault_path), root_key.hex())
             wipe_memory(root_key)
 
             error_label.update("")
             self.dismiss(True)
 
         except Exception as exc:
-            err = str(exc)
-            if "wrong password" in err.lower() or "mac" in err.lower() or "decrypt" in err.lower():
-                msg = "  Wrong password — please try again."
+            err = str(exc).lower()
+            if any(k in err for k in (
+                "wrong password", "mac", "decrypt", "hmac",
+                "integrity", "mismatch", "fingerprint",
+            )):
+                msg = "  [red]Wrong password — please try again.[/red]"
             else:
-                msg = f"  Error: {err[:60]}"
+                msg = f"  [red]Error: {str(exc)[:70]}[/red]"
             error_label.update(msg)
             pw_input.value = ""
             pw_input.focus()
@@ -129,61 +276,108 @@ class UnlockScreen(Screen):
 # ── Create vault screen ───────────────────────────────────────────
 
 class CreateVaultScreen(Screen):
-    """
-    Full-screen vault creation overlay.
+    """Full-screen vault creation overlay."""
 
-    Shown by NyxoraApp when no vault file exists yet.
-    Guides the user through creating their first vault.
-    On success, dismisses itself; the app then shows the main layout.
-    """
+    BINDINGS = [Binding("escape", "app.quit", "Quit", show=True)]
 
-    BINDINGS = [
-        Binding("escape", "app.quit", "Quit", show=True),
-    ]
+    DEFAULT_CSS = """
+    CreateVaultScreen {
+        background: #060810;
+    }
+    #create-center {
+        width: 100%;
+        height: 1fr;
+        align: center middle;
+    }
+    #create-box {
+        width: 52;
+        height: auto;
+        background: #08111A;
+        border: tall #1C2A3A;
+        padding: 2 3;
+        align: center middle;
+    }
+    .nyx-corners-top { width: 100%; height: auto; }
+    .nyx-corners-bot { width: 100%; height: auto; }
+    .corner-spacer   { width: 1fr; height: 1; }
+    """
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="unlock-box"):
-            yield Static(
-                "\n  ◆  NYXORA\n",
-                id="unlock-icon",
-            )
-            yield Static("Create Your Vault", id="unlock-title")
-            yield Static(
-                "Choose a master password — store it somewhere safe",
-                id="unlock-subtitle",
-            )
-            yield Label("Master password", classes="form-label")
-            yield Input(
-                placeholder="Enter master password…",
-                password=True,
-                id="create-password",
-            )
-            yield Label("Confirm password", classes="form-label")
-            yield Input(
-                placeholder="Confirm master password…",
-                password=True,
-                id="create-confirm",
-            )
-            yield Static("", id="create-error", classes="form-error")
-            yield Static(
-                "  Min 8 characters · Stored locally · Never uploaded",
-                id="unlock-subtitle",
-            )
-            with Horizontal():
-                yield Button(
-                    "  CREATE VAULT",
-                    id="btn-create",
-                    classes="primary",
+        from nyxora import __version__
+
+        with Vertical(id="create-ui"):
+            yield NyxTopBar([
+                ("CREATE VAULT", True),
+                ("FIRST RUN", False),
+                ("OFFLINE", True),
+            ])
+
+            with Horizontal(classes="nyx-corners-top"):
+                yield NyxCornerInfo(
+                    "CIPHER SUITE",
+                    ["XCHACHA20-POLY1305", "ARGON2ID · 64MB"],
                 )
-                yield Button(
-                    "  QUIT",
-                    id="btn-quit-create",
+                yield Static("", classes="corner-spacer")
+                yield NyxCornerInfo(
+                    "REQUIREMENTS",
+                    ["MIN 8 CHARACTERS", "STORE SECURELY"],
                 )
+
+            with Vertical(id="create-center"):
+                with Vertical(id="create-box"):
+                    yield Static(
+                        "[bold #C89A30]◆  NYXORA[/bold #C89A30]",
+                        id="unlock-icon",
+                    )
+                    yield Static(
+                        "[bold]Create Your Vault[/bold]",
+                        id="unlock-title",
+                    )
+                    yield Static(
+                        "Choose a master password — store it somewhere safe",
+                        id="unlock-subtitle",
+                    )
+                    yield NyxSep()
+                    yield Label("Master password", classes="form-label")
+                    yield Input(
+                        placeholder="Enter master password…",
+                        password=True,
+                        id="create-password",
+                    )
+                    yield Label("Confirm password", classes="form-label")
+                    yield Input(
+                        placeholder="Confirm master password…",
+                        password=True,
+                        id="create-confirm",
+                    )
+                    yield Static("", id="create-error", classes="form-error")
+                    yield Static(
+                        "[#141E28]Min 8 characters · Stored locally · Never uploaded[/#141E28]",
+                        id="create-hint",
+                    )
+                    with Horizontal(id="unlock-btns"):
+                        yield Button(
+                            "⬡  CREATE VAULT",
+                            id="btn-create",
+                            classes="primary",
+                        )
+                        yield Button("QUIT", id="btn-quit-create")
+
+            with Horizontal(classes="nyx-corners-bot"):
+                yield NyxCornerInfo(
+                    "VAULT PATH",
+                    ["~/.nyxora/vault.nyx"],
+                )
+                yield Static("", classes="corner-spacer")
+                yield NyxCornerInfo(
+                    "BUILD",
+                    [f"v{__version__}", "NEXUS"],
+                )
+
+            yield NyxBottomBar()
 
     def on_mount(self) -> None:
         self.query_one("#create-password", Input).focus()
-
-    # ── Events ──────────────────────────────────────────────────
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "create-password":
@@ -197,54 +391,53 @@ class CreateVaultScreen(Screen):
         elif event.button.id == "btn-quit-create":
             self.app.exit()
 
-    # ── Create logic ─────────────────────────────────────────────
-
     def _attempt_create(self) -> None:
-        pw_input = self.query_one("#create-password", Input)
-        confirm_input = self.query_one("#create-confirm", Input)
-        error_label = self.query_one("#create-error", Static)
-
+        pw_input      = self.query_one("#create-password", Input)
+        confirm_input = self.query_one("#create-confirm",  Input)
+        error_label   = self.query_one("#create-error",    Static)
         password = pw_input.value
-        confirm = confirm_input.value
+        confirm  = confirm_input.value
 
-        # Validation
         if len(password) < 8:
-            error_label.update("  Password must be at least 8 characters.")
+            error_label.update("  [red]Password must be at least 8 characters.[/red]")
             pw_input.focus()
             return
-
         if password != confirm:
-            error_label.update("  Passwords do not match.")
+            error_label.update("  [red]Passwords do not match.[/red]")
             confirm_input.value = ""
             confirm_input.focus()
             return
 
-        error_label.update("  Creating vault…")
+        error_label.update("  [#C89A30]Creating vault…[/#C89A30]")
 
         try:
             vault_path = _get_default_vault_path()
             vault_path.parent.mkdir(parents=True, exist_ok=True)
 
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.vault_store import VaultStore
-            from nyxora.core.session_core import SessionManager
+            from nyxora.core.vault_store   import VaultStore
+            from nyxora.core.memory_guard  import wipe_memory
+            from nyxora.cli.helpers        import save_session
 
-            engine = CryptoEngine()
-            store = VaultStore(engine)
-            root_key = store.create(vault_path, password)
+            engine   = CryptoEngine()
+            salt     = engine.generate_salt()
+            root_key = engine.derive_key(password, salt)
+            store    = VaultStore(engine)
+            store.initialize(vault_path, root_key)
             store.close()
 
-            sm = SessionManager()
-            sm.create_session(vault_path, password, root_key)
+            salt_path = vault_path.parent / (vault_path.stem + ".salt")
+            salt_path.write_bytes(salt)
 
-            from nyxora.core.memory_guard import wipe_memory
+            session_id = str(uuid.uuid4())
+            save_session(session_id, str(vault_path), root_key.hex())
             wipe_memory(root_key)
 
             error_label.update("")
             self.dismiss(True)
 
         except Exception as exc:
-            error_label.update(f"  Failed: {str(exc)[:60]}")
-            pw_input.value = ""
+            error_label.update(f"  [red]Failed: {str(exc)[:70]}[/red]")
+            pw_input.value      = ""
             confirm_input.value = ""
             pw_input.focus()
