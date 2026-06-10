@@ -234,6 +234,77 @@ def test_check_action_allows_navigation_when_no_input_focused():
     asyncio.run(scenario())
 
 
+def test_manage_search_accepts_consecutive_letters():
+    """Search Input keeps focus through letter keystrokes (no steal)."""
+    import asyncio
+
+    from textual.widgets import Input
+
+    from nyxora.tui.app import NyxoraApp
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.3)  # let Manage's deferred load settle
+            search = app.query_one("#entry-search", Input)
+            search.focus()
+            await pilot.pause()
+            for key in "amazon":
+                await pilot.press(key)
+                await pilot.pause()
+            assert search.value == "amazon"
+
+    asyncio.run(scenario())
+
+
+def test_manage_search_accepts_consecutive_digits():
+    """All digits 1-7 land in the search Input; no nav binding fires."""
+    import asyncio
+
+    from textual.widgets import ContentSwitcher, Input
+
+    from nyxora.tui.app import NyxoraApp
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.3)
+            search = app.query_one("#entry-search", Input)
+            search.focus()
+            await pilot.pause()
+            for key in "1234567":
+                await pilot.press(key)
+                await pilot.pause()
+            assert search.value == "1234567"
+            switcher = app.query_one("#workspace", ContentSwitcher)
+            assert switcher.current == "screen-manage"
+
+    asyncio.run(scenario())
+
+
+def test_manage_letter_bindings_fire_when_input_not_focused():
+    """'a' opens the add-entry overlay when focus is not on an Input."""
+    import asyncio
+
+    from textual.widgets import Button
+
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.add_entry import AddEntryScreen
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.3)
+            # Focus a ManageScreen descendant so its bindings are active
+            app.set_focus(app.query_one("#btn-copy", Button))
+            await pilot.pause()
+            await pilot.press("a")
+            await pilot.pause()
+            assert isinstance(app.screen, AddEntryScreen)
+
+    asyncio.run(scenario())
+
+
 def test_unlock_password_field_accepts_all_digits():
     """Master password Input on UnlockScreen accepts digits 1-7."""
     import asyncio

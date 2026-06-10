@@ -284,10 +284,6 @@ class ManageScreen(Static):
                 )
             except Exception:
                 pass
-            try:
-                self._focus_list()
-            except Exception:
-                pass
         except Exception:
             pass
 
@@ -382,6 +378,18 @@ class ManageScreen(Static):
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "entry-search":
             self._apply_filter(event.value)
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        """Suppress letter shortcuts while an Input is being typed in.
+
+        Mirrors NyxoraApp.check_action: without this, keys like 'a'
+        (add) or 'd' (delete) could fire screen bindings instead of
+        landing in the search box. Escape stays active so the user
+        can clear the search without leaving the Input.
+        """
+        if action != "clear_search" and isinstance(self.app.focused, Input):
+            return False
+        return True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         dispatch = {
