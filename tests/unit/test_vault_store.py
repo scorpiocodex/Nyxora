@@ -153,6 +153,107 @@ def test_vault_migrate_from_store(crypto, tmp_path):
     store1.close()
     store2.close()
 
+def test_change_password_preserves_totp_and_metadata(crypto, tmp_path):
+    """C1 regression: change-password must keep TOTP secrets and metadata.
+
+    Drives the real `nyx vault change-password` command (CliRunner with
+    the suite's interactive mocks) against a real on-disk vault.
+    """
+    from unittest.mock import patch
+
+    from typer.testing import CliRunner
+
+    from nyxora.cli.main import app
+
+    vp = tmp_path / "vault.nyx"
+    old_key = bytearray(os.urandom(32))
+
+    store = VaultStore(crypto)
+    store.initialize(vp, old_key)
+    store.add_entry("GitHub", "gh-pass", username="alice")
+    store.add_entry(
+        "Gmail", "gm-pass", username="bob",
+        totp_secret="JBSWY3DPEHPK3PXP",
+    )
+    # Vault-level recovery TOTP — same path the recovery commands use
+    store.set_metadata_value("totp_secret", "JBSWY3DPEHPK3PXP")
+    vault_id_before = store.get_vault_id()
+    created_at_before = store.get_metadata_value("created_at")
+    kdf_mode_before = store.get_metadata_value("kdf_mode")
+    store.close()
+
+    runner = CliRunner()
+    with patch("questionary.password") as m_pw, \
+         patch("nyxora.cli.commands.vault.ui"), \
+         patch("nyxora.cli.commands.vault.load_session") as m_load, \
+         patch("nyxora.cli.commands.vault.save_session"):
+        m_pw.return_value.ask.side_effect = ["NewPass-67890", "NewPass-67890"]
+        m_load.return_value = ("session-id", vp, bytearray(old_key))
+        result = runner.invoke(app, ["vault", "change-password"])
+    assert result.exit_code == 0
+
+    new_salt = vp.with_suffix(".salt").read_bytes()
+    new_key = crypto.derive_key("NewPass-67890".encode(), new_salt)
+
+    reopened = VaultStore(crypto)
+    reopened.open(vp, new_key)
+    assert reopened.get_vault_id() == vault_id_before
+    entries = {e.title: e for e in reopened.list_entries()}
+    assert entries["GitHub"].password == "gh-pass"
+    assert entries["GitHub"].username == "alice"
+    assert entries["Gmail"].password == "gm-pass"
+    assert entries["Gmail"].username == "bob"
+    # Core C1 assertions: both TOTP storage locations survive
+    assert entries["Gmail"].totp_secret == "JBSWY3DPEHPK3PXP"
+    assert reopened.get_metadata_value("totp_secret") == "JBSWY3DPEHPK3PXP"
+    assert reopened.get_metadata_value("created_at") == created_at_before
+    assert reopened.get_metadata_value("kdf_mode") == kdf_mode_before
+    reopened.close()
+
+    # The old key must no longer open the vault
+    stale = VaultStore(crypto)
+    with pytest.raises(NyxoraError):
+        stale.open(vp, old_key)
+
+def test_change_password_preserves_all_metadata_keys(crypto, tmp_path):
+    """Every metadata row survives migration; vault_hmac is recomputed."""
+    db1 = tmp_path / "old.nyx"
+    store1 = VaultStore(crypto)
+    key1 = bytearray(os.urandom(32))
+    store1.initialize(db1, key1)
+    store1.add_entry("Entry", "pw")
+    store1.set_metadata_value("totp_secret", "JBSWY3DPEHPK3PXP")
+
+    meta_before = {
+        row["key"]: row["value"]
+        for row in store1._conn.execute("SELECT key, value FROM metadata")
+    }
+
+    db2 = tmp_path / "new.nyx"
+    store2 = VaultStore(crypto)
+    key2 = bytearray(os.urandom(32))
+    store2.initialize(db2, key2)
+    store2.migrate_from_store(store1)
+    store1.close()
+
+    meta_after = {
+        row["key"]: row["value"]
+        for row in store2._conn.execute("SELECT key, value FROM metadata")
+    }
+    store2.close()
+
+    assert set(meta_after) == set(meta_before)
+    for key, value in meta_before.items():
+        if key == "vault_hmac":
+            continue  # recomputed under the new HMAC key by design
+        assert meta_after[key] == value, key
+
+    # The migrated vault must reopen cleanly under its new key
+    store3 = VaultStore(crypto)
+    store3.open(db2, key2)
+    assert store3.get_vault_id() == meta_before["vault_id"]
+    store3.close()
+
 def test_vault_context_manager(crypto, db_path):
     key = bytearray(os.urandom(32))
     with VaultStore(crypto) as store:

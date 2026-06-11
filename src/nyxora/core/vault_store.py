@@ -756,6 +756,7 @@ class VaultStore:
                     n_enc = enc(rec.notes)
                     tags_enc = enc(orjson.dumps(rec.tags)) if rec.tags is not None else None
                     cust_enc = enc(orjson.dumps(rec.custom)) if rec.custom else None
+                    totp_enc = enc(rec.totp_secret)
                 finally:
                     wipe_memory(entry_key)
 
@@ -773,6 +774,8 @@ class VaultStore:
                     fields_for_mac["tags_enc"] = tags_enc
                 if cust_enc:
                     fields_for_mac["custom_enc"] = cust_enc
+                if totp_enc:
+                    fields_for_mac["totp_secret_enc"] = totp_enc
                 new_entry_hmac = self._crypto.compute_entry_hmac(rec.id, fields_for_mac, self._hmac_key)
 
                 import os
@@ -780,10 +783,11 @@ class VaultStore:
                 conn.execute(
                     """INSERT INTO entries (
                         id, title_enc, password_enc, username_enc, url_enc,
-                        notes_enc, tags_enc, custom_enc, created_at, updated_at,
+                        notes_enc, tags_enc, custom_enc, totp_secret_enc,
+                        created_at, updated_at,
                         accessed_at, is_deleted, entry_hmac, entry_salt
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (rec.id, t_enc, p_enc, u_enc, url_enc, n_enc, tags_enc, cust_enc,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (rec.id, t_enc, p_enc, u_enc, url_enc, n_enc, tags_enc, cust_enc, totp_enc,
                      rec.created_at, rec.updated_at, rec.accessed_at, int(rec.is_deleted), new_entry_hmac, entry_salt)
                 )
 
@@ -812,6 +816,21 @@ class VaultStore:
                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     (row["id"], row["timestamp"], row["event_type"], row["entry_id"],
                      row["session_id"], detail_enc, new_log_hmac)
+                )
+
+            # 3. Migrate Metadata — preserve the vault's identity and settings
+            # (vault_id, created_at, kdf_mode, schema_version, recovery
+            # totp_secret, …). Values are plaintext TEXT key/value rows, so
+            # they copy directly. vault_hmac is skipped: it is recomputed
+            # below under this store's HMAC key.
+            old_meta = old_conn.execute("SELECT key, value FROM metadata").fetchall()
+            for row in old_meta:
+                if row["key"] == "vault_hmac":
+                    continue
+                conn.execute(
+                    "INSERT INTO metadata (key, value) VALUES (?, ?)"
+                    " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (row["key"], row["value"]),
                 )
 
         self._update_vault_hmac(conn)
