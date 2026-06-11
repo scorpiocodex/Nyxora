@@ -235,11 +235,17 @@ class UnlockScreen(Screen):
         try:
             vault_path = _get_default_vault_path()
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.vault_store   import VaultStore
+            from nyxora.core.vault_store   import (
+                VaultStore,
+                recover_interrupted_password_change,
+            )
             from nyxora.core.memory_guard  import wipe_memory
             from nyxora.cli.helpers        import save_session
 
             engine = CryptoEngine()
+            # Heal any interrupted change-password swap before the salt
+            # is read, so the pair on disk is always consistent.
+            recover_interrupted_password_change(vault_path)
             salt   = _read_kdf_salt(vault_path)
             if salt is None:
                 error_label.update(

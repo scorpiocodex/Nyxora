@@ -30,7 +30,11 @@ from nyxora.core.crypto_engine import (
     CryptoEngine,
 )
 from nyxora.core.memory_guard import wipe_memory
-from nyxora.core.vault_store import EntryRecord, VaultStore
+from nyxora.core.vault_store import (
+    EntryRecord,
+    VaultStore,
+    recover_interrupted_password_change,
+)
 from nyxora.utils.exceptions import EntryNotFoundError, NyxoraError
 
 
@@ -106,6 +110,9 @@ class VaultClient:
         if self._password is not None:
             # Derive key from provided password
             vp = self._resolve_vault_path()
+            # Heal any interrupted change-password swap before reading
+            # the salt sidecar.
+            recover_interrupted_password_change(vp)
             salt_file = vp.with_suffix(".salt")
             if not salt_file.exists():
                 raise NyxoraError(f"Salt file not found at {salt_file}")

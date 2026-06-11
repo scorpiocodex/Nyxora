@@ -282,6 +282,228 @@ def test_vault_update_delete_not_found(crypto, db_path):
     with pytest.raises(NyxoraError):
         store.delete_entry("fake-uuid-123")
 
+
+# ── H2: crash-safe change-password (staged swap + recovery-on-open) ──
+
+
+def _init_password_vault(crypto, tmp_path, password):
+    """A CLI-convention vault: password-derived key + .salt sidecar."""
+    vp = tmp_path / "vault.nyx"
+    salt = crypto.generate_salt()
+    key = crypto.derive_key(password, salt)
+    store = VaultStore(crypto)
+    store.initialize(vp, key)
+    store.add_entry(
+        "H2Entry", "h2-pass", username="carol",
+        totp_secret="JBSWY3DPEHPK3PXP",
+    )
+    store.close()
+    vp.with_suffix(".salt").write_bytes(salt)
+    return vp, salt, key
+
+
+def test_change_password_crash_after_vault_swap_before_salt_swap(
+    crypto, tmp_path
+):
+    """H2 regression: a crash between the vault replace and the salt
+    replace must not brick the vault.
+
+    Two injection seams cover both flow generations: pre-fix the salt
+    was overwritten in place via Path.write_bytes (patched to raise =
+    crash after the backup vault was already deleted -> permanent
+    brick); post-fix the salt commit is os.replace onto *.salt (patched
+    to raise = crash in the inter-replace window, vault.salt.new still
+    staged). Post-fix, recovery-on-open inside `nyx vault unlock`
+    completes the swap and the NEW password opens the vault.
+    """
+    import pathlib
+    from unittest.mock import patch
+
+    from typer.testing import CliRunner
+
+    from nyxora.cli.main import app
+
+    vp, old_salt, old_key = _init_password_vault(
+        crypto, tmp_path, "OldPass-H2-1"
+    )
+
+    real_replace = os.replace
+    real_write_bytes = pathlib.Path.write_bytes
+
+    def crash_on_salt_replace(src, dst, *a, **k):
+        if str(dst).endswith(".salt"):
+            raise OSError("simulated crash before salt swap")
+        return real_replace(src, dst, *a, **k)
+
+    def crash_on_salt_write(self, data):
+        if str(self).endswith(".salt"):
+            raise OSError("simulated crash during salt write")
+        return real_write_bytes(self, data)
+
+    runner = CliRunner()
+    with patch("questionary.password") as m_pw, \
+         patch("nyxora.cli.commands.vault.ui"), \
+         patch("nyxora.cli.commands.vault.load_session") as m_load, \
+         patch("nyxora.cli.commands.vault.save_session"), \
+         patch("os.replace", side_effect=crash_on_salt_replace), \
+         patch.object(pathlib.Path, "write_bytes", crash_on_salt_write):
+        m_pw.return_value.ask.side_effect = ["NewPass-H2-2", "NewPass-H2-2"]
+        m_load.return_value = ("sid", vp, bytearray(old_key))
+        runner.invoke(app, ["vault", "change-password"])
+
+    # The window state: as the disk stands, NEITHER password opens the
+    # vault directly — the salt still derives the old key but the vault
+    # file is already under the new key.
+    for pw in ("OldPass-H2-1", "NewPass-H2-2"):
+        k = crypto.derive_key(pw, vp.with_suffix(".salt").read_bytes())
+        s = VaultStore(crypto)
+        with pytest.raises(NyxoraError):
+            s.open(vp, k)
+        s.close()  # release the connection left by the failed open
+
+    # THE H2 assertion: the real unlock path self-heals and the NEW
+    # password opens the vault. Pre-fix this is the permanent brick.
+    with patch("questionary.password") as m_pw, \
+         patch("nyxora.cli.commands.vault.ui"), \
+         patch("nyxora.cli.commands.vault.save_session"), \
+         patch("nyxora.core.update_engine.background_check",
+               lambda channel: None):
+        m_pw.return_value.ask.return_value = "NewPass-H2-2"
+        result = runner.invoke(app, ["vault", "unlock", "--vault", str(vp)])
+    assert result.exit_code == 0
+
+    # Recovery consumed the staged salt and the data survived intact.
+    assert not vp.with_suffix(".salt.new").exists()
+    assert not vp.with_suffix(".nyx.new").exists()
+    new_salt = vp.with_suffix(".salt").read_bytes()
+    assert new_salt != old_salt
+    new_key = crypto.derive_key("NewPass-H2-2", new_salt)
+    reopened = VaultStore(crypto)
+    reopened.open(vp, new_key)
+    entries = {e.title: e for e in reopened.list_entries()}
+    assert entries["H2Entry"].password == "h2-pass"
+    assert entries["H2Entry"].totp_secret == "JBSWY3DPEHPK3PXP"
+    reopened.close()
+
+
+def test_change_password_crash_before_vault_swap_rolls_back(
+    crypto, tmp_path
+):
+    """H2: a crash before the vault replace leaves the originals live;
+    the staged files are rolled back and the OLD password keeps
+    working. Pre-fix the staged protocol does not exist, so the
+    roll-back guarantee cannot hold (red)."""
+    from unittest.mock import patch
+
+    from typer.testing import CliRunner
+
+    from nyxora.cli.main import app
+
+    vp, old_salt, old_key = _init_password_vault(
+        crypto, tmp_path, "OldPass-H2-1"
+    )
+
+    real_replace = os.replace
+
+    def crash_on_vault_replace(src, dst, *a, **k):
+        if str(dst).endswith(".nyx"):
+            raise OSError("simulated crash before vault swap")
+        return real_replace(src, dst, *a, **k)
+
+    runner = CliRunner()
+    with patch("questionary.password") as m_pw, \
+         patch("nyxora.cli.commands.vault.ui"), \
+         patch("nyxora.cli.commands.vault.load_session") as m_load, \
+         patch("nyxora.cli.commands.vault.save_session"), \
+         patch("os.replace", side_effect=crash_on_vault_replace):
+        m_pw.return_value.ask.side_effect = ["NewPass-H2-2", "NewPass-H2-2"]
+        m_load.return_value = ("sid", vp, bytearray(old_key))
+        result = runner.invoke(app, ["vault", "change-password"])
+    assert result.exit_code != 0
+
+    # Roll-back: no staged leftovers, originals untouched.
+    assert not vp.with_suffix(".nyx.new").exists()
+    assert not vp.with_suffix(".salt.new").exists()
+    assert vp.with_suffix(".salt").read_bytes() == old_salt
+
+    # The OLD password opens the vault through the real unlock path.
+    with patch("questionary.password") as m_pw, \
+         patch("nyxora.cli.commands.vault.ui"), \
+         patch("nyxora.cli.commands.vault.save_session"), \
+         patch("nyxora.core.update_engine.background_check",
+               lambda channel: None):
+        m_pw.return_value.ask.return_value = "OldPass-H2-1"
+        result = runner.invoke(app, ["vault", "unlock", "--vault", str(vp)])
+    assert result.exit_code == 0
+
+    k = crypto.derive_key(
+        "OldPass-H2-1", vp.with_suffix(".salt").read_bytes()
+    )
+    s = VaultStore(crypto)
+    s.open(vp, k)
+    entries = {e.title: e for e in s.list_entries()}
+    assert entries["H2Entry"].password == "h2-pass"
+    assert entries["H2Entry"].totp_secret == "JBSWY3DPEHPK3PXP"
+    s.close()
+
+
+def test_change_password_success_preserves_data_through_atomic_swap(
+    crypto, tmp_path
+):
+    """H2 success path: the staged-swap rewrite keeps every C1
+    invariant (TOTP, metadata, vault_id) and leaves no staged files."""
+    from unittest.mock import patch
+
+    from typer.testing import CliRunner
+
+    from nyxora.cli.main import app
+
+    vp, old_salt, old_key = _init_password_vault(
+        crypto, tmp_path, "OldPass-H2-1"
+    )
+    store = VaultStore(crypto)
+    store.open(vp, bytearray(old_key))
+    store.set_metadata_value("totp_secret", "JBSWY3DPEHPK3PXP")
+    vault_id_before = store.get_vault_id()
+    created_at_before = store.get_metadata_value("created_at")
+    kdf_mode_before = store.get_metadata_value("kdf_mode")
+    store.close()
+
+    runner = CliRunner()
+    with patch("questionary.password") as m_pw, \
+         patch("nyxora.cli.commands.vault.ui"), \
+         patch("nyxora.cli.commands.vault.load_session") as m_load, \
+         patch("nyxora.cli.commands.vault.save_session"):
+        m_pw.return_value.ask.side_effect = ["NewPass-H2-2", "NewPass-H2-2"]
+        m_load.return_value = ("sid", vp, bytearray(old_key))
+        result = runner.invoke(app, ["vault", "change-password"])
+    assert result.exit_code == 0
+
+    # No staged leftovers after a clean commit
+    assert not vp.with_suffix(".nyx.new").exists()
+    assert not vp.with_suffix(".salt.new").exists()
+
+    new_salt = vp.with_suffix(".salt").read_bytes()
+    assert new_salt != old_salt
+    new_key = crypto.derive_key("NewPass-H2-2", new_salt)
+    reopened = VaultStore(crypto)
+    reopened.open(vp, new_key)
+    assert reopened.get_vault_id() == vault_id_before
+    entries = {e.title: e for e in reopened.list_entries()}
+    assert entries["H2Entry"].password == "h2-pass"
+    assert entries["H2Entry"].username == "carol"
+    assert entries["H2Entry"].totp_secret == "JBSWY3DPEHPK3PXP"
+    assert reopened.get_metadata_value("totp_secret") == "JBSWY3DPEHPK3PXP"
+    assert reopened.get_metadata_value("created_at") == created_at_before
+    assert reopened.get_metadata_value("kdf_mode") == kdf_mode_before
+    reopened.close()
+
+    # The old key must no longer open the vault
+    stale = VaultStore(crypto)
+    with pytest.raises(NyxoraError):
+        stale.open(vp, old_key)
+    stale.close()  # release the connection left by the failed open
+
     store.close()
 
 def test_vault_require_open(crypto):

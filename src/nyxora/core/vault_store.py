@@ -15,6 +15,7 @@ Integrity model:
 from __future__ import annotations
 
 import hmac
+import os
 import sqlite3
 import time
 import uuid
@@ -1004,3 +1005,48 @@ class VaultStore:
             "SELECT COUNT(*) as cnt FROM entries WHERE is_deleted=0"
         ).fetchone()
         return int(row["cnt"])
+
+
+# ── Crash recovery for change-password (H2) ───────────────────────────────────
+
+
+def recover_interrupted_password_change(vault_path: Path) -> str | None:
+    """Heal an interrupted change-password staged swap (H2).
+
+    change-password (cli/commands/vault.py) commits via a staged
+    two-file protocol:
+
+      stage:  vault.nyx.new and vault.salt.new are fully written and
+              fsync'd while the original vault + salt stay untouched
+      commit: os.replace(vault.nyx.new -> vault.nyx), then
+              os.replace(vault.salt.new -> vault.salt)
+
+    Called before any password-based open (CLI unlock, TUI unlock,
+    SDK), this applies one deterministic rule to whatever a crash
+    left behind:
+
+      - vault.salt.new AND vault.nyx.new present -> the vault replace
+        had not happened, so the OLD pair is still live. Roll BACK:
+        delete both staged files. The old password works.
+      - ONLY vault.salt.new present -> the vault was already replaced
+        under the new key. Roll FORWARD: complete the salt replace.
+        The new password works.
+      - ONLY vault.nyx.new present -> a crash during staging, before
+        the salt was staged. Originals live; delete the stale file.
+
+    Returns "rolled-back", "rolled-forward", or None when there was
+    nothing to heal.
+    """
+    staged_vault = vault_path.with_suffix(".nyx.new")
+    staged_salt = vault_path.with_suffix(".salt.new")
+    if staged_salt.exists():
+        if staged_vault.exists():
+            staged_vault.unlink(missing_ok=True)
+            staged_salt.unlink(missing_ok=True)
+            return "rolled-back"
+        os.replace(staged_salt, vault_path.with_suffix(".salt"))
+        return "rolled-forward"
+    if staged_vault.exists():
+        staged_vault.unlink(missing_ok=True)
+        return "rolled-back"
+    return None

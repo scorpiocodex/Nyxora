@@ -33,11 +33,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   q/1-7 can no longer abandon in-progress work
 - **Recovery side panel** — no longer shows stale TOTP confirmation
   text in Capsule/Shamir modes; entry-form overlay layout tidied
+- **SDK opens CLI-created vaults** — VaultClient's default Argon2id
+  parameters now come from the same canonical constants the CLI uses,
+  so both sides derive identical keys (was: the SDK defaulted to weaker
+  parameters and could not open any CLI-created vault) (C3)
+- **change-password is crash-safe** — the new vault and salt are staged
+  with fsync and committed via atomic os.replace, and recovery-on-open
+  heals any interrupted swap; a crash or write failure at any point
+  leaves the vault openable with exactly one of the old or new
+  passwords, never neither (was: a crash mid-swap bricked the vault
+  permanently) (H2)
 
-### Known deferred (targeted for v3.0.1 / v3.1.0 per roadmap)
-- SDK KDF defaults differ from CLI, so the SDK cannot yet open
-  CLI-created vaults (C3)
-- change-password salt swap is not yet atomic (H2)
+All CRITICAL/HIGH data-integrity items from the pre-release audit
+(C1, C2, C3, H2) are resolved in this release.
 
 ---
 

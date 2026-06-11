@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -19,7 +18,7 @@ from nyxora.cli.ui import checklist_panel, is_json_mode, json_out, session_dashb
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import SecureString, generate_session_token, wipe_memory
 from nyxora.core.session_core import DEFAULT_INACTIVITY_TIMEOUT, SessionManager
-from nyxora.core.vault_store import VaultStore
+from nyxora.core.vault_store import VaultStore, recover_interrupted_password_change
 from nyxora.utils.config import Config
 from nyxora.utils.exceptions import NyxoraError
 
@@ -27,6 +26,18 @@ app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
 
 _engine = CryptoEngine()
 _session = SessionManager()
+
+
+def _fsync_file(path: Path) -> None:
+    """Best-effort fsync for power-loss durability. Never raises."""
+    try:
+        fd = os.open(str(path), os.O_RDWR)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:  # pragma: no cover
+        pass
 
 
 @app.command()
@@ -38,6 +49,20 @@ def unlock(
     config = Config()
     config.load()
     vp = vault_path or get_vault_path(config)
+
+    # Heal any interrupted change-password swap before the salt is read
+    # (see core.vault_store.recover_interrupted_password_change).
+    healed = recover_interrupted_password_change(vp)
+    if healed == "rolled-forward":
+        ui.info_panel(
+            "An interrupted password change was completed — "
+            "the NEW master password is now active."
+        )
+    elif healed == "rolled-back":
+        ui.info_panel(
+            "An interrupted password change was rolled back — "
+            "the OLD master password remains active."
+        )
 
     import questionary
     password = questionary.password("Master password:").ask()
@@ -182,6 +207,16 @@ def change_password() -> None:
     _, vault_path, root_key = session_data
     session_token = generate_session_token()
     try:
+        # Heal/clear any leftovers from a previously interrupted
+        # change-password before staging a new one (a stale .nyx.new
+        # would collide with initialize below).
+        if recover_interrupted_password_change(vault_path) == "rolled-forward":
+            ui.info_panel(
+                "A previously interrupted password change was completed — "
+                "the password from that run is now active. If this session "
+                "was unlocked with the older password, unlock again first."
+            )
+
         import questionary
         new_password = questionary.password("New master password:").ask()
         if not new_password:
@@ -201,8 +236,11 @@ def change_password() -> None:
             with ui.spinner("Deriving new key (Argon2id)…"):
                 new_root_key = _engine.derive_key(pw, new_salt)
 
-        # Write re-encrypted data to a new temporary vault
+        # ── Phase 1: STAGE. Originals untouched — a crash anywhere in
+        # this phase leaves the old vault+salt live (old password works)
+        # and recovery-on-open clears the stale staged files.
         new_vault = vault_path.with_suffix(".nyx.new")
+        staged_salt = vault_path.with_suffix(".salt.new")
         new_store = VaultStore(_engine)
         new_store.initialize(new_vault, new_root_key)
 
@@ -221,37 +259,69 @@ def change_password() -> None:
             new_vault.unlink(missing_ok=True)
             raise
 
-        # Atomic swap: back up original, promote new, remove backup
-        bak_vault = vault_path.with_suffix(".nyx.bak")
+        # Stage the new salt durably (write + fsync — it must never be
+        # truncated: it doubles as the recovery signal for an interrupted
+        # commit) and fsync the new vault best-effort.
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        if hasattr(os, "O_NOINHERIT"):
+            flags |= getattr(os, "O_NOINHERIT")
+        fd = os.open(str(staged_salt), flags, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(new_salt)
+            f.flush()
+            os.fsync(f.fileno())
+        _fsync_file(new_vault)
 
-        def _rename(src: Path, dst: Path) -> None:
-            try:
-                src.rename(dst)
-            except OSError:
-                shutil.move(str(src), str(dst))
+        # ── Phase 2: COMMIT — two atomic os.replace calls, vault first.
+        # Between them the disk briefly holds a new-key vault with the
+        # old salt, but vault.salt.new still exists; recovery-on-open
+        # (recover_interrupted_password_change) rolls the salt forward,
+        # so every crash point leaves the vault openable with exactly
+        # one of the two passwords — never neither.
+        salt_file = vault_path.with_suffix(".salt")
+        try:
+            os.replace(new_vault, vault_path)
+        except Exception as e:
+            # The vault replace failed — originals are still live.
+            # Roll back fully so the old password stays authoritative.
+            new_vault.unlink(missing_ok=True)
+            staged_salt.unlink(missing_ok=True)
+            ui.error_panel(
+                f"Password change aborted: {e}\n"
+                "The vault is unchanged — your OLD password remains active."
+            )
+            raise typer.Exit(1)
 
         try:
-            _rename(vault_path, bak_vault)
-            _rename(new_vault, vault_path)
-            bak_vault.unlink(missing_ok=True)
+            os.replace(staged_salt, salt_file)
         except Exception:
-            if bak_vault.exists() and not vault_path.exists():
-                try:
-                    _rename(bak_vault, vault_path)
-                except Exception:
-                    pass
-            new_vault.unlink(missing_ok=True)
-            raise
+            # The vault is already under the NEW key and the staged salt
+            # is still on disk — the next unlock completes the swap
+            # automatically. The password change has effectively
+            # succeeded; do NOT report it as a failure.
+            ui.warning_panel(
+                "Vault re-encrypted under the new password, but the salt "
+                "finalisation was deferred. It completes automatically on "
+                "the next unlock — use the NEW password."
+            )
 
-        salt_file = vault_path.with_suffix(".salt")
-        salt_file.write_bytes(new_salt)
-
-        save_session(session_token, str(vault_path), new_root_key.hex())
+        try:
+            save_session(session_token, str(vault_path), new_root_key.hex())
+        except Exception:
+            ui.warning_panel(
+                "Password changed, but the session could not be refreshed. "
+                "Run 'nyx vault unlock' with your NEW password."
+            )
         wipe_memory(new_root_key)
         ui.success_panel("Master password changed successfully.")
 
+    except typer.Exit:
+        raise
     except Exception as e:
-        ui.error_panel(f"Failed to change password: {e}")
+        ui.error_panel(
+            f"Failed to change password: {e}\n"
+            "The vault is unchanged — your OLD password remains active."
+        )
         raise typer.Exit(1)
     finally:
         wipe_memory(root_key)
