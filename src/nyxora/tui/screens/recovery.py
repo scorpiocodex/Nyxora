@@ -236,6 +236,13 @@ class RecoveryScreen(Static):
                     btn.remove_class("primary")
             except Exception:
                 pass
+        # The TOTP confirmation text has no meaning in the other
+        # sub-modes — clear the side panel so it doesn't linger there.
+        if protocol != "totp":
+            try:
+                self.query_one("#totp-output", Static).update("")
+            except Exception:
+                pass
 
     def action_show_totp(self)    -> None: self._show_panel("totp")
     def action_show_capsule(self) -> None: self._show_panel("capsule")

@@ -582,6 +582,26 @@ DataTable > .datatable--even-row {
     text-align: center;
 }
 
+/* ── Add/Edit entry overlay forms ─────────────────────────────── */
+/* The forms reuse #unlock-box but lack the unlock screens' centering
+   wrappers, so centre the box here. Top-anchored (not middle): the
+   form is taller than a 30-row terminal and must scroll, not clip. */
+
+AddEntryScreen ScrollableContainer,
+EditEntryScreen ScrollableContainer {
+    align: center top;
+}
+
+AddEntryScreen #unlock-box,
+EditEntryScreen #unlock-box {
+    margin: 1 0;
+}
+
+#add-pw-strength,
+#edit-pw-strength {
+    margin: 0 0 1 0;
+}
+
 /* ── Footer ───────────────────────────────────────────────────── */
 
 Footer {

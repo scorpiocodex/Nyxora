@@ -518,6 +518,63 @@ def test_nav_works_on_bare_workspace_no_overlay():
     asyncio.run(scenario())
 
 
+def test_recovery_side_panel_cleared_on_mode_switch(monkeypatch):
+    """Issue A: TOTP confirmation must not leak into Capsule/Shamir."""
+    import asyncio
+
+    from textual.widgets import Input, Static
+
+    from nyxora.tui.app import NyxoraApp
+
+    saved = {}
+    _patch_fake_vault(monkeypatch, saved)
+
+    async def scenario():
+        app = NyxoraApp(start_screen="recovery", exe_mode=False)
+        async with app.run_test(size=(140, 46)) as pilot:
+            await pilot.pause(0.3)
+            app.query_one("#totp-label", Input).value = "nyxora@example.com"
+            await pilot.pause()
+            await pilot.click("#btn-totp-setup")
+            await pilot.pause(0.3)
+            out = app.query_one("#totp-output", Static)
+            assert "TOTP saved" in str(out.content)
+            await pilot.press("escape")  # close the QR overlay
+            await pilot.pause(0.3)
+            await pilot.click("#btn-p-capsule")
+            await pilot.pause(0.2)
+            assert "TOTP saved" not in str(out.content)
+            await pilot.click("#btn-p-shamir")
+            await pilot.pause(0.2)
+            assert "TOTP saved" not in str(out.content)
+
+    asyncio.run(scenario())
+
+
+def test_edit_entry_buttons_present_and_reachable():
+    """Issue B: layout change must not drop or hide the form buttons."""
+    import asyncio
+
+    from textual.widgets import Button
+
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.edit_entry import EditEntryScreen
+
+    entries = _make_entries()
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test(size=(120, 30)) as pilot:
+            await pilot.pause(0.3)
+            app.push_screen(EditEntryScreen(entries[0]))
+            await pilot.pause(0.3)
+            save = app.screen.query_one("#btn-save", Button)
+            cancel = app.screen.query_one("#btn-cancel", Button)
+            assert save.display and cancel.display
+
+    asyncio.run(scenario())
+
+
 def test_manage_rebuild_leaves_no_zombie_widgets(monkeypatch, tmp_path):
     """Search rebuilds on a populated list must not hang Pilot (BUG 1).
 
