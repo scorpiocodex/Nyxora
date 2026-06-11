@@ -5,6 +5,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.0] "Nexus" - 2026-06-11
+
+### Added
+- **TUI v3 complete rewrite** with the Obsidian Tactical design system:
+  7 sections (Vault, Manage, Backup, Recovery, Updates, Generate,
+  Security) plus unlock/create screens and add/edit entry overlays,
+  with shared chrome (top status bar, corner readouts, cipher bar)
+
+### Fixed
+- **CRITICAL: change-password data preservation** — `nyx vault
+  change-password` now preserves the TOTP secret, all vault metadata,
+  and the vault_id (was: silently destroyed TOTP secrets and changed
+  the vault's identity on every password rotation)
+- **Focus-aware navigation** — digit keys 1-7 now reach password and
+  search Inputs instead of being swallowed by navigation bindings
+  (was: untypeable fields)
+- **Manage search focus** — search keeps focus while typing; list
+  rebuild awaits widget removal so no zombie widgets are left behind
+- **Manage after unlock** — entry list populates correctly immediately
+  after cold-launch unlock (was: showed an empty vault)
+- **TOTP QR overlay** — recovery QR is rendered in a full-screen modal
+  overlay so it is actually scannable (was: clipped and unscannable in
+  the side panel)
+- **Overlay binding suppression** — quit and section navigation are
+  suppressed while entry-form and QR overlays are active, so a stray
+  q/1-7 can no longer abandon in-progress work
+- **Recovery side panel** — no longer shows stale TOTP confirmation
+  text in Capsule/Shamir modes; entry-form overlay layout tidied
+
+### Known deferred (targeted for v3.0.1 / v3.1.0 per roadmap)
+- SDK KDF defaults differ from CLI, so the SDK cannot yet open
+  CLI-created vaults (C3)
+- change-password salt swap is not yet atomic (H2)
+
+---
+
 ## [2.6.6] - 2026-05-18
 
 ### Fixed

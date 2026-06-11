@@ -138,4 +138,4 @@ def test_vault_client_health(tmp_path):
 
 
 def test_version_export():
-    assert __version__ == "2.6.6"
+    assert __version__ == "3.0.0"
