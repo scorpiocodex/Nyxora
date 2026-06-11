@@ -518,6 +518,64 @@ def test_nav_works_on_bare_workspace_no_overlay():
     asyncio.run(scenario())
 
 
+def test_manage_rebuild_leaves_no_zombie_widgets(monkeypatch, tmp_path):
+    """Search rebuilds on a populated list must not hang Pilot (BUG 1).
+
+    _rebuild_list used to discard ListView.clear()'s AwaitRemove, leaving
+    removed EntryItems half-dead; Pilot's screen-settle wait then blocked
+    forever (WaitForScreenTimeout) on the first interaction.
+    """
+    import asyncio
+    import os
+
+    from textual.widgets import Input
+
+    import nyxora.cli.helpers as helpers
+    from nyxora.core.crypto_engine import CryptoEngine
+    from nyxora.core.vault_store import VaultStore
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.manage import EntryItem
+
+    engine = CryptoEngine()
+    vp = tmp_path / "vault.nyx"
+    root_key = bytearray(os.urandom(32))
+    key_hex = bytes(root_key).hex()
+    store = VaultStore(engine)
+    store.initialize(vp, root_key)
+    store.add_entry("TestA", "pw-a", username="alice")
+    store.close()
+
+    monkeypatch.setattr(helpers, "load_session",
+                        lambda: ("s", vp, bytearray.fromhex(key_hex)))
+
+    def fake_open(engine_):
+        s = VaultStore(engine_)
+        s.open(vp, bytearray.fromhex(key_hex))
+        return s, "s", bytearray.fromhex(key_hex), vp
+
+    monkeypatch.setattr(helpers, "open_vault", fake_open)
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.4)
+            search = app.query_one("#entry-search", Input)
+            search.focus()
+            await pilot.pause()  # raised WaitForScreenTimeout pre-fix
+            for key in "test":
+                await pilot.press(key)
+                await pilot.pause()
+            assert search.value == "test"
+            items = list(app.query(EntryItem))
+            assert len(items) == 1
+            assert all(
+                item.parent is not None and item.is_running
+                for item in items
+            )
+
+    asyncio.run(scenario())
+
+
 def test_unlock_password_field_accepts_all_digits():
     """Master password Input on UnlockScreen accepts digits 1-7."""
     import asyncio

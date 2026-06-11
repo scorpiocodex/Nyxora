@@ -257,15 +257,29 @@ class ManageScreen(Static):
         self._rebuild_list()
 
     def _rebuild_list(self) -> None:
+        """Schedule a list rebuild on the event loop.
+
+        Callers are all synchronous (mount, timer debounce, Input.Changed,
+        actions), but widget removal is asynchronous in Textual: the
+        AwaitRemove from ListView.clear() must be awaited or removed
+        EntryItems linger half-dead and stall Pilot's screen-settle wait.
+        An exclusive worker awaits the removal properly and lets rapid
+        search-as-you-type retriggers cancel the previous rebuild instead
+        of stacking.
+        """
+        self.run_worker(
+            self._do_rebuild_list(),
+            group="rebuild-list",
+            exclusive=True,
+        )
+
+    async def _do_rebuild_list(self) -> None:
         """Repopulate the ListView with current filtered entries."""
         try:
             lv = self.query_one("#entry-items", ListView)
-            lv.clear()
-            # Force remove any lingering children
-            for child in list(lv.children):
-                child.remove()
-            for entry in self._filtered:
-                lv.append(EntryItem(entry))
+            await lv.clear()
+            if self._filtered:
+                await lv.extend(EntryItem(e) for e in self._filtered)
 
             # Re-select previously selected entry if still present
             if self._selected:
