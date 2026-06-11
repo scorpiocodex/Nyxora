@@ -129,6 +129,16 @@ class ManageScreen(Static):
 
     def on_show(self) -> None:
         """Reload entries — debounced to prevent double-firing."""
+        self.reload_entries()
+
+    def reload_entries(self) -> None:
+        """Debounced entry reload — the same path on_show takes.
+
+        Also called explicitly by the app after a successful unlock:
+        this screen is already the ContentSwitcher's current child
+        beneath the unlock overlay, so no Show event fires then and the
+        locked-state '0 entries' render would otherwise persist.
+        """
         if self._load_pending:
             return
         self._load_pending = True

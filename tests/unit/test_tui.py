@@ -576,6 +576,78 @@ def test_manage_rebuild_leaves_no_zombie_widgets(monkeypatch, tmp_path):
     asyncio.run(scenario())
 
 
+def test_manage_populated_after_cold_launch_unlock(monkeypatch, tmp_path):
+    """BUG 2: entries must appear right after unlocking at cold launch.
+
+    ManageScreen is already the ContentSwitcher's current child beneath
+    the unlock overlay, so _switch_to('manage') after unlock fires no
+    Show event — pre-fix the list stayed at its locked-state '0 entries'
+    render until the user navigated away and back.
+    """
+    import asyncio
+    from pathlib import Path
+
+    from textual.widgets import Input
+
+    import nyxora.cli.helpers as helpers
+    import nyxora.tui.screens.unlock as unlock_mod
+    from nyxora.core.crypto_engine import CryptoEngine
+    from nyxora.core.vault_store import VaultStore
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens._shared_bg import NyxTopBar
+    from nyxora.tui.screens.manage import EntryItem, ManageScreen
+    from nyxora.tui.screens.unlock import UnlockScreen
+
+    password = "Cold-Launch-Pw-1"
+    engine = CryptoEngine()
+    vp = tmp_path / "vault.nyx"
+    salt = engine.generate_salt()
+    root_key = engine.derive_key(password, salt)
+    store = VaultStore(engine)
+    store.initialize(vp, root_key)
+    store.add_entry("ColdLaunchEntry", "entry-pw", username="tester")
+    store.close()
+    (tmp_path / "vault.salt").write_bytes(salt)
+
+    sessions = {}
+
+    def fake_save(session_id, vault_path, key_hex):
+        sessions["live"] = (session_id, Path(vault_path), key_hex)
+
+    def fake_load():
+        if "live" not in sessions:
+            return None
+        sid, path, key_hex = sessions["live"]
+        return sid, path, bytearray.fromhex(key_hex)
+
+    monkeypatch.setattr(unlock_mod, "_get_default_vault_path", lambda: vp)
+    monkeypatch.setattr(helpers, "save_session", fake_save)
+    monkeypatch.setattr(helpers, "load_session", fake_load)
+
+    async def scenario():
+        app = NyxoraApp(start_screen="unlock", exe_mode=False)
+        async with app.run_test(size=(140, 50)) as pilot:
+            await pilot.pause(0.3)
+            assert isinstance(app.screen, UnlockScreen)
+            pw = app.screen.query_one("#unlock-password", Input)
+            pw.focus()
+            await pilot.pause()
+            await pilot.press(*password)
+            await pilot.press("enter")
+            await pilot.pause(1.0)  # Argon2 derive + dismiss
+            await pilot.pause(0.5)  # debounced reload + rebuild worker
+            assert not isinstance(app.screen, UnlockScreen)
+
+            # BUG 2 regression: pre-fix this list was empty here
+            items = list(app.query(EntryItem))
+            assert len(items) == 1
+            assert items[0].record.title == "ColdLaunchEntry"
+            topbar = app.query_one(ManageScreen).query_one(NyxTopBar)
+            assert "1/1 ENTRIES" in str(topbar.content)
+
+    asyncio.run(scenario())
+
+
 def test_unlock_password_field_accepts_all_digits():
     """Master password Input on UnlockScreen accepts digits 1-7."""
     import asyncio

@@ -178,6 +178,10 @@ class NyxoraApp(App):
         """Called when UnlockScreen or CreateVaultScreen dismisses."""
         if success:
             self._switch_to("manage")
+            # Manage is already the current switcher child beneath the
+            # unlock overlay, so the switch fires no Show event — reload
+            # explicitly now that a session exists.
+            self.query_one(ManageScreen).reload_entries()
             self._update_header_status()
             self.notify(
                 "Vault unlocked. Welcome to Nyxora.",
