@@ -23,7 +23,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Optional
 
-from nyxora.core.crypto_engine import CryptoEngine
+from nyxora.core.crypto_engine import (
+    ARGON2_MEMORY_COST,
+    ARGON2_PARALLELISM,
+    ARGON2_TIME_COST,
+    CryptoEngine,
+)
 from nyxora.core.memory_guard import wipe_memory
 from nyxora.core.vault_store import EntryRecord, VaultStore
 from nyxora.utils.exceptions import EntryNotFoundError, NyxoraError
@@ -51,9 +56,9 @@ class VaultClient:
         self,
         vault_path: Optional[Path] = None,
         password: Optional[str] = None,
-        argon2_memory: int = 65536,
-        argon2_time: int = 1,
-        argon2_parallelism: int = 1,
+        argon2_memory: int = ARGON2_MEMORY_COST,
+        argon2_time: int = ARGON2_TIME_COST,
+        argon2_parallelism: int = ARGON2_PARALLELISM,
     ) -> None:
         """Initialise the client.
 
@@ -62,11 +67,13 @@ class VaultClient:
                         profile / CLI session path is used.
             password:   Master password. If None, the current CLI session
                         key is used (vault must already be unlocked).
-            argon2_memory: Argon2id memory parameter in KiB.
-                           Default 65536 (64 MB) — lower than CLI for speed
-                           in scripting; increase for production key derivation.
-            argon2_time:   Argon2id iteration count.
-            argon2_parallelism: Argon2id thread count.
+            argon2_memory: Argon2id memory parameter in KiB. Defaults to
+                           the canonical CryptoEngine value the CLI uses,
+                           so the SDK derives the identical key and can
+                           open CLI-created vaults. Override only if your
+                           vault was created with custom parameters.
+            argon2_time:   Argon2id iteration count (canonical default).
+            argon2_parallelism: Argon2id thread count (canonical default).
         """
         self._vault_path = vault_path
         self._password = password

@@ -139,3 +139,95 @@ def test_vault_client_health(tmp_path):
 
 def test_version_export():
     assert __version__ == "3.0.0"
+
+
+# ── C3: CLI ↔ SDK KDF cross-compatibility ──────────────────────────────
+
+
+def test_sdk_opens_cli_created_vault(tmp_path):
+    """C3 regression: the SDK's default KDF params must match the CLI's.
+
+    Creates a vault through the real `nyx vault unlock --create` command
+    (canonical CryptoEngine defaults), then opens it with VaultClient
+    using NO explicit Argon2 parameters. Pre-fix the SDK defaulted to
+    64MB/t=1 and derived a different root key, so this open failed.
+    """
+    from unittest.mock import patch
+
+    from typer.testing import CliRunner
+
+    from nyxora.cli.main import app
+
+    vp = tmp_path / "cli-created.nyx"
+    pw = "Cross-Compat-Pw-1"
+
+    runner = CliRunner()
+    with patch("questionary.password") as m_pw, \
+         patch("nyxora.cli.commands.vault.ui"), \
+         patch("nyxora.cli.commands.vault.save_session"):
+        m_pw.return_value.ask.return_value = pw
+        result = runner.invoke(
+            app, ["vault", "unlock", "--create", "--vault", str(vp)]
+        )
+    assert result.exit_code == 0
+    assert vp.exists()
+    assert vp.with_suffix(".salt").exists()
+
+    # Add a known entry through the CLI's mechanism: a default-constructed
+    # CryptoEngine, the same as cli/commands/vault.py's module engine.
+    cli_engine = CryptoEngine()
+    salt = vp.with_suffix(".salt").read_bytes()
+    root_key = cli_engine.derive_key(pw, salt)
+    store = VaultStore(cli_engine)
+    store.open(vp, root_key)
+    store.add_entry("CrossCompat", "cli-secret-42", username="cli-user")
+    store.close()
+    wipe_memory(root_key)
+
+    # THE C3 assertion: the SDK, with its DEFAULT parameters, must derive
+    # the identical key and open the CLI's vault.
+    with VaultClient(vault_path=vp, password=pw) as client:
+        entry = client.get("CrossCompat")
+        assert entry.password == "cli-secret-42"
+        assert entry.username == "cli-user"
+
+
+def test_cli_opens_sdk_created_vault(tmp_path):
+    """C3 symmetry: a vault created with the SDK's default KDF params
+    must open through the CLI's default-constructed CryptoEngine.
+
+    The SDK has no initialize() API, so "created via SDK" means: vault
+    file initialised with whatever Argon2 defaults VaultClient ships,
+    then the entry added through VaultClient itself. Guards against
+    future divergence in either direction.
+    """
+    vp = tmp_path / "sdk-created.nyx"
+    pw = "Cross-Compat-Pw-2"
+
+    probe = VaultClient(vault_path=vp, password=pw)
+    sdk_engine = CryptoEngine(
+        argon2_memory=probe._argon2_memory,
+        argon2_time=probe._argon2_time,
+        argon2_parallelism=probe._argon2_parallelism,
+    )
+    salt = sdk_engine.generate_salt()
+    root_key = sdk_engine.derive_key(pw, salt)
+    store = VaultStore(sdk_engine)
+    store.initialize(vp, root_key)
+    store.close()
+    wipe_memory(root_key)
+    vp.with_suffix(".salt").write_bytes(salt)
+
+    with VaultClient(vault_path=vp, password=pw) as client:
+        client.add("SdkEntry", "sdk-secret-77", username="sdk-user")
+
+    # CLI mechanism: default-constructed engine (canonical parameters)
+    cli_engine = CryptoEngine()
+    cli_key = cli_engine.derive_key(pw, vp.with_suffix(".salt").read_bytes())
+    cli_store = VaultStore(cli_engine)
+    cli_store.open(vp, cli_key)
+    entries = {e.title: e for e in cli_store.list_entries()}
+    assert entries["SdkEntry"].password == "sdk-secret-77"
+    assert entries["SdkEntry"].username == "sdk-user"
+    cli_store.close()
+    wipe_memory(cli_key)
