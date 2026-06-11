@@ -404,6 +404,120 @@ def test_totp_qr_not_in_side_panel_after_mode_switch(monkeypatch):
     asyncio.run(scenario())
 
 
+# ── Overlay-aware quit/nav suppression ────────────────────────────
+
+
+def test_quit_suppressed_while_addentry_overlay_active():
+    """q must not quit the app while the add-entry form is open."""
+    import asyncio
+
+    from textual.widgets import Button
+
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.add_entry import AddEntryScreen
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.3)
+            app.set_focus(app.query_one("#btn-copy", Button))
+            await pilot.pause()
+            await pilot.press("a")
+            await pilot.pause()
+            assert isinstance(app.screen, AddEntryScreen)
+            # Focus a non-Input so 'q' reaches the App bindings
+            app.set_focus(app.screen.query_one("#btn-cancel", Button))
+            await pilot.pause()
+            await pilot.press("q")
+            await pilot.pause()
+            # Without suppression action_quit would have exited the app
+            assert isinstance(app.screen, AddEntryScreen)
+
+    asyncio.run(scenario())
+
+
+def test_nav_suppressed_while_totpqr_overlay_active():
+    """Digits must not switch workspace sections under the QR overlay."""
+    import asyncio
+
+    from textual.widgets import ContentSwitcher
+
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.totp_qr_overlay import TotpQrOverlay
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.3)
+            switcher = app.query_one("#workspace", ContentSwitcher)
+            app.push_screen(TotpQrOverlay(
+                secret="ABCDEF234567",
+                account_label="test@example.com",
+            ))
+            await pilot.pause()
+            assert isinstance(app.screen, TotpQrOverlay)
+            await pilot.press("3")
+            await pilot.pause()
+            assert isinstance(app.screen, TotpQrOverlay)
+            assert switcher.current == "screen-manage"
+
+    asyncio.run(scenario())
+
+
+def test_quit_allowed_at_unlock_screen():
+    """check_action permits quit at the lock screen (cold or relock)."""
+    import asyncio
+
+    from textual.widgets import Input
+
+    from nyxora.tui.app import NyxoraApp
+    from nyxora.tui.screens.unlock import UnlockScreen
+
+    async def scenario():
+        # Cold launch: UnlockScreen pushed by on_mount.
+        app = NyxoraApp(start_screen="unlock", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            assert isinstance(app.screen, UnlockScreen)
+            app.screen.query_one("#unlock-password", Input).focus()
+            await pilot.pause()
+            assert app.check_action("quit", ()) is True
+            assert app.check_action("navigate", ()) is False
+
+        # Mid-session relock: UnlockScreen pushed over the workspace.
+        app2 = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app2.run_test() as pilot:
+            await pilot.pause(0.3)
+            app2.push_screen(UnlockScreen())
+            await pilot.pause()
+            assert isinstance(app2.screen, UnlockScreen)
+            assert app2.check_action("quit", ()) is True
+
+    asyncio.run(scenario())
+
+
+def test_nav_works_on_bare_workspace_no_overlay():
+    """Digit nav still fires on the workspace when no overlay is open."""
+    import asyncio
+
+    from textual.widgets import Button, ContentSwitcher
+
+    from nyxora.tui.app import NyxoraApp
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        async with app.run_test() as pilot:
+            await pilot.pause(0.3)
+            app.set_focus(app.query_one("#btn-copy", Button))
+            await pilot.pause()
+            await pilot.press("3")
+            await pilot.pause()
+            switcher = app.query_one("#workspace", ContentSwitcher)
+            assert switcher.current == "screen-backup"
+
+    asyncio.run(scenario())
+
+
 def test_unlock_password_field_accepts_all_digits():
     """Master password Input on UnlockScreen accepts digits 1-7."""
     import asyncio

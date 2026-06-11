@@ -194,13 +194,28 @@ class NyxoraApp(App):
         self._switch_to(screen_id)
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
-        """Suppress digit nav bindings when an Input widget has focus.
+        """Gate App-level bindings by focus and overlay state.
 
-        Textual calls check_action for every binding; returning False
-        disables it for the current focus state. This lets master password
-        fields and search Inputs receive digits 1-7 without being
-        intercepted by the section navigation bindings.
+        - While an abandonable-work overlay is active (AddEntry / EditEntry
+          form, or the TOTP QR overlay), suppress both quit and navigate so
+          the user can't accidentally quit the app or jump sections and lose
+          a half-filled form or a mid-scan QR. They leave via the overlay's
+          own Esc binding first.
+        - Unlock / CreateVault screens are intentionally NOT in this set: at
+          the lock screen (cold launch or mid-session relock) q should quit
+          and digits should reach the master password Input.
+        - While an Input has focus, suppress navigate so digits 1-7 reach
+          the field (master password, search box).
         """
+        if action in ("quit", "navigate"):
+            from nyxora.tui.screens.add_entry import AddEntryScreen
+            from nyxora.tui.screens.edit_entry import EditEntryScreen
+            from nyxora.tui.screens.totp_qr_overlay import TotpQrOverlay
+            if isinstance(
+                self.screen,
+                (AddEntryScreen, EditEntryScreen, TotpQrOverlay),
+            ):
+                return False
         if action.startswith("navigate") and isinstance(self.focused, Input):
             return False
         return True
