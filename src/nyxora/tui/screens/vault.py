@@ -8,14 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.widgets import Button, Static
 
+from nyxora.tui._markup import escape
 from nyxora.tui.screens._shared_bg import (
-    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxTopBar,
 )
 
 
@@ -62,7 +64,6 @@ class VaultScreen(Static):
         try:
             from nyxora.cli.helpers import load_session
             from nyxora.core.memory_guard import wipe_memory
-            from nyxora import __version__
 
             session = load_session()
             badge = self.query_one("#vault-status-badge", Static)
@@ -164,7 +165,7 @@ class VaultScreen(Static):
     def _do_lock(self) -> None:
         """Lock the vault: wipe session and update display."""
         try:
-            from nyxora.cli.helpers import load_session, clear_session
+            from nyxora.cli.helpers import clear_session, load_session
             from nyxora.core.memory_guard import wipe_memory
 
             session = load_session()

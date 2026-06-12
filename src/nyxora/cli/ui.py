@@ -390,6 +390,7 @@ def clipboard_countdown(seconds: int = 30) -> None:
     """Launch a daemon thread that clears the clipboard after `seconds` seconds."""
     import threading
     import time
+
     import pyperclip
 
     def _clear() -> None:

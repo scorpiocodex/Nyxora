@@ -136,6 +136,7 @@ def unlock(
             _cfg.load()
             if _cfg.get("update.check_on_startup", True):
                 import threading
+
                 from nyxora.core.update_engine import background_check
                 _channel = _cfg.get("update.channel", "stable")
 
@@ -408,8 +409,9 @@ def health_check() -> None:
 @app.command("profiles")
 def list_profiles() -> None:
     """List all vault profiles."""
-    from nyxora.cli.helpers import load_profiles
     from rich.table import Table
+
+    from nyxora.cli.helpers import load_profiles
     from nyxora.cli.ui import ELEC_PURPLE, NEON_CYAN, console
 
     data = load_profiles()
@@ -502,8 +504,9 @@ def remove_profile(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
 ) -> None:
     """Remove a vault profile (does not delete the vault file)."""
-    from nyxora.cli.helpers import load_profiles, save_profiles
     import questionary
+
+    from nyxora.cli.helpers import load_profiles, save_profiles
 
     data = load_profiles()
     if name not in data.get("profiles", {}):
@@ -532,4 +535,5 @@ def remove_profile(
 
 
 from nyxora.cli.commands.import_ import import_entries  # noqa: E402
+
 app.command("import")(import_entries)

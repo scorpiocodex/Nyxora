@@ -2,16 +2,14 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 import pyotp
-from textual import on, work
+from textual import on
 from textual.app import ComposeResult
-from textual.binding import Binding
 from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
 from textual.screen import Screen
-from textual.widgets import Footer, Input, Label, ListItem, ListView, Static
+from textual.widgets import Footer, Label, ListItem, ListView, Static
 
 from nyxora.core.vault_store import EntryRecord
 
@@ -108,8 +106,8 @@ class VaultBrowserScreen(Screen):
             self._render_detail(event.item.record)
 
     def _render_detail(self, record: EntryRecord) -> None:
-        from nyxora.core.intel_engine import IntelEngine
         from nyxora.core.crypto_engine import CryptoEngine
+        from nyxora.core.intel_engine import IntelEngine
         _engine = CryptoEngine(
             argon2_memory=65536, argon2_time=1, argon2_parallelism=1
         )

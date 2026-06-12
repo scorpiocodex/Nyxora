@@ -279,8 +279,8 @@ def totp(
                                help="Refresh every 30s automatically"),
 ) -> None:
     """Show the live TOTP code for an entry."""
-    import math
     import time
+
     import pyotp
 
     store, root_key = _open_vault()

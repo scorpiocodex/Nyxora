@@ -1,10 +1,12 @@
 from pathlib import Path
+
 import pytest
+
 from nyxora import VaultClient, __version__
 from nyxora.core.crypto_engine import CryptoEngine
-from nyxora.core.vault_store import VaultStore
 from nyxora.core.memory_guard import wipe_memory
-from nyxora.utils.exceptions import NyxoraError, EntryNotFoundError
+from nyxora.core.vault_store import VaultStore
+from nyxora.utils.exceptions import EntryNotFoundError, NyxoraError
 
 
 def _make_vault(tmp_path: Path, password: str = "sdk-test-pw") -> Path:

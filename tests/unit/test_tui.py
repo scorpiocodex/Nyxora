@@ -1,8 +1,9 @@
 """Smoke tests for the TUI — verify instantiation without launching."""
 from __future__ import annotations
 
-from nyxora.core.vault_store import EntryRecord
 import time
+
+from nyxora.core.vault_store import EntryRecord
 
 
 def _make_entries() -> list[EntryRecord]:
@@ -117,13 +118,13 @@ def test_security_screen_instantiation():
 def test_wired_app_composes_all_screens():
     """NyxoraApp with wired screens can be instantiated."""
     from nyxora.tui.app import NyxoraApp
-    from nyxora.tui.screens.vault    import VaultScreen
-    from nyxora.tui.screens.manage   import ManageScreen
-    from nyxora.tui.screens.backup   import BackupScreen
-    from nyxora.tui.screens.recovery import RecoveryScreen
-    from nyxora.tui.screens.updates  import UpdatesScreen
+    from nyxora.tui.screens.backup import BackupScreen
     from nyxora.tui.screens.generate import GenerateScreen
+    from nyxora.tui.screens.manage import ManageScreen
+    from nyxora.tui.screens.recovery import RecoveryScreen
     from nyxora.tui.screens.security import SecurityScreen
+    from nyxora.tui.screens.updates import UpdatesScreen
+    from nyxora.tui.screens.vault import VaultScreen
 
     app = NyxoraApp(start_screen="manage", exe_mode=False)
     assert app is not None
@@ -176,6 +177,7 @@ def test_tui_cmd_no_textual(monkeypatch):
         return real_import(name, *args, **kwargs)
 
     from typer.testing import CliRunner
+
     from nyxora.cli.commands.tui_cmd import app as tui_app
 
     runner = CliRunner()

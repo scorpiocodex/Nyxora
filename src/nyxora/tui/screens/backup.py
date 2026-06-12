@@ -9,14 +9,16 @@ import datetime
 from pathlib import Path
 from typing import List, Tuple
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, ScrollableContainer
-from textual.widgets import Button, DataTable, Label, Static
+from textual.containers import Horizontal
+from textual.widgets import Button, Static
 
+from nyxora.tui._markup import escape
 from nyxora.tui.screens._shared_bg import (
-    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxTopBar,
 )
 
 
@@ -145,10 +147,12 @@ class BackupScreen(Static):
         status = self.query_one("#backup-status", Static)
         status.update("  Creating backup…")
         try:
+            import shutil
+            import time
+
             from nyxora.cli.helpers import open_vault
             from nyxora.core.crypto_engine import CryptoEngine
             from nyxora.core.memory_guard import wipe_memory
-            import shutil, time
 
             engine = CryptoEngine()
             store, _, root_key, vault_path = open_vault(engine)
@@ -185,8 +189,8 @@ class BackupScreen(Static):
         try:
             from nyxora.cli.helpers import load_session
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.vault_store import VaultStore
             from nyxora.core.memory_guard import wipe_memory
+            from nyxora.core.vault_store import VaultStore
 
             session = load_session()
             if session is None:

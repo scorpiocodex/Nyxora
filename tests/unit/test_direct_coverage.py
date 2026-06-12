@@ -127,6 +127,7 @@ def test_locker_shred_direct(tmp_path):
 
 def test_backup_export_cancel(tmp_path):
     from typer.testing import CliRunner
+
     from nyxora.cli.commands.backup import app
     runner = CliRunner()
     out = tmp_path / "out.csv"
@@ -166,12 +167,15 @@ def test_helpers_direct(tmp_path):
 
 
 def test_import_parsers(tmp_path):
-    import csv as csv_mod
-    from nyxora.cli.commands.import_ import (
-        _parse_csv, _parse_nyxora_json, _parse_bitwarden,
-        _parse_1password, _detect_format,
-    )
     import orjson
+
+    from nyxora.cli.commands.import_ import (
+        _detect_format,
+        _parse_1password,
+        _parse_bitwarden,
+        _parse_csv,
+        _parse_nyxora_json,
+    )
 
     # CSV parser
     csv_file = tmp_path / "test.csv"
@@ -244,6 +248,7 @@ def test_import_parsers(tmp_path):
 
 def test_generate_min_strength(tmp_path):
     from typer.testing import CliRunner
+
     from nyxora.cli.commands.generate import app
     runner = CliRunner()
     # --min-strength with a short low-entropy alphabet should trigger the
@@ -258,8 +263,10 @@ def test_generate_min_strength(tmp_path):
 
 
 def test_secret_custom_and_tags():
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
+
     from typer.testing import CliRunner
+
     from nyxora.cli.commands.secret import app
 
     runner = CliRunner()

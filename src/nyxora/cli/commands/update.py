@@ -72,10 +72,14 @@ def install(
     """Download and install the latest Nyxora release."""
     from nyxora import __version__
     from nyxora.core.update_engine import (
-        download_asset, fetch_latest_release,
-        get_checksums_asset, get_wheel_asset,
-        install_wheel, is_newer,
-        save_rollback_version, verify_checksum,
+        download_asset,
+        fetch_latest_release,
+        get_checksums_asset,
+        get_wheel_asset,
+        install_wheel,
+        is_newer,
+        save_rollback_version,
+        verify_checksum,
     )
 
     channel = _get_channel()

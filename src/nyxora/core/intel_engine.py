@@ -15,12 +15,12 @@ import hashlib
 import math
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from math import inf
 from pathlib import Path
 
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.utils.exceptions import NyxoraError
@@ -460,7 +460,7 @@ class IntelEngine:
           TOTP coverage          10 pts
         """
         import time as _time
-        from nyxora.core.vault_store import EntryRecord
+
 
         total_entries = len(entries)
         if total_entries == 0:

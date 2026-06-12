@@ -111,10 +111,11 @@ def test_check_breach_hibp_network_error(mock_sleep, mock_get, intel):
 
 
 def test_vault_health_score():
+    import time
+    from unittest.mock import MagicMock
+
     from nyxora.core.crypto_engine import CryptoEngine
     from nyxora.core.intel_engine import IntelEngine
-    from unittest.mock import MagicMock
-    import time
 
     engine = CryptoEngine(argon2_memory=8192, argon2_time=1, argon2_parallelism=1)
     intel = IntelEngine(engine)

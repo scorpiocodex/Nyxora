@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import math
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
 from nyxora.core.vault_store import EntryRecord
+from nyxora.tui._markup import escape
 
 
 class EditEntryScreen(Screen):
@@ -174,7 +174,8 @@ class EditEntryScreen(Screen):
             engine = CryptoEngine()
             pw = engine.generate_password(length=24)
         except Exception:
-            import secrets, string
+            import secrets
+            import string
             alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
             pw = "".join(secrets.choice(alphabet) for _ in range(24))
         self.query_one("#edit-password", Input).value = pw

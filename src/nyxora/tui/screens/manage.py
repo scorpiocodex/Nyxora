@@ -11,17 +11,18 @@ import math
 import time
 from typing import List, Optional
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.widgets import Button, Input, ListItem, ListView, Static
 
 from nyxora.core.vault_store import EntryRecord
+from nyxora.tui._markup import escape
 from nyxora.tui.screens._shared_bg import (
-    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxTopBar,
 )
-
 
 # ── Entry list item ───────────────────────────────────────────────
 
@@ -197,7 +198,7 @@ class ManageScreen(Static):
         try:
             from nyxora.cli.helpers import open_vault
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.memory_guard  import wipe_memory
+            from nyxora.core.memory_guard import wipe_memory
 
             engine = CryptoEngine()
             store, _, root_key, _ = open_vault(engine)

@@ -98,8 +98,8 @@ def save_session(session_id: str, vault_path: str, root_key_hex: str) -> None:
             )  # pragma: no cover
         else:  # pragma: no cover
             ui.error_panel(  # pragma: no cover
-                f"Failed to securely store session key in OS keyring.\n"
-                f"On Windows this should not happen — check DPAPI is available.",
+                "Failed to securely store session key in OS keyring.\n"
+                "On Windows this should not happen — check DPAPI is available.",
                 title="Keyring Error"
             )  # pragma: no cover
             raise typer.Exit(1)  # pragma: no cover

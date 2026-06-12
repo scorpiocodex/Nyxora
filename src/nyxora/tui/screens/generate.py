@@ -9,14 +9,16 @@ import math
 import secrets
 import string
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Checkbox, Input, Label, Static
 
+from nyxora.tui._markup import escape
 from nyxora.tui.screens._shared_bg import (
-    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxTopBar,
 )
 
 

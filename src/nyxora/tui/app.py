@@ -33,14 +33,13 @@ from textual.widgets import (
 )
 
 from nyxora import __version__
-from nyxora.tui.screens.vault    import VaultScreen
-from nyxora.tui.screens.manage   import ManageScreen
-from nyxora.tui.screens.backup   import BackupScreen
-from nyxora.tui.screens.recovery import RecoveryScreen
-from nyxora.tui.screens.updates  import UpdatesScreen
+from nyxora.tui.screens.backup import BackupScreen
 from nyxora.tui.screens.generate import GenerateScreen
+from nyxora.tui.screens.manage import ManageScreen
+from nyxora.tui.screens.recovery import RecoveryScreen
 from nyxora.tui.screens.security import SecurityScreen
-
+from nyxora.tui.screens.updates import UpdatesScreen
+from nyxora.tui.screens.vault import VaultScreen
 
 # ── Sidebar nav item ─────────────────────────────────────────────
 
@@ -289,7 +288,7 @@ class NyxoraApp(App):
     def action_quit(self) -> None:
         if self.exe_mode:
             try:
-                from nyxora.cli.helpers import load_session, clear_session
+                from nyxora.cli.helpers import clear_session, load_session
                 from nyxora.core.memory_guard import wipe_memory
 
                 session = load_session()

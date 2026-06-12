@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Static
 
@@ -33,8 +32,8 @@ class AuditScreen(Screen):
         self._render_audit()
 
     def _render_audit(self) -> None:
-        from nyxora.core.intel_engine import IntelEngine
         from nyxora.core.crypto_engine import CryptoEngine
+        from nyxora.core.intel_engine import IntelEngine
 
         _engine = CryptoEngine(
             argon2_memory=65536, argon2_time=1, argon2_parallelism=1

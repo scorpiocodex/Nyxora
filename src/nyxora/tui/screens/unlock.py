@@ -7,16 +7,18 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
+from nyxora.tui._markup import escape
 from nyxora.tui.screens._shared_bg import (
-    BG_PATTERN, NyxBackground, NyxBottomBar,
-    NyxCornerInfo, NyxSep, NyxTopBar,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxSep,
+    NyxTopBar,
 )
 
 
@@ -235,13 +237,13 @@ class UnlockScreen(Screen):
 
         try:
             vault_path = _get_default_vault_path()
+            from nyxora.cli.helpers import save_session
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.vault_store   import (
+            from nyxora.core.memory_guard import wipe_memory
+            from nyxora.core.vault_store import (
                 VaultStore,
                 recover_interrupted_password_change,
             )
-            from nyxora.core.memory_guard  import wipe_memory
-            from nyxora.cli.helpers        import save_session
 
             engine = CryptoEngine()
             # Heal any interrupted change-password swap before the salt
@@ -421,10 +423,10 @@ class CreateVaultScreen(Screen):
             vault_path = _get_default_vault_path()
             vault_path.parent.mkdir(parents=True, exist_ok=True)
 
+            from nyxora.cli.helpers import save_session
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.core.vault_store   import VaultStore
-            from nyxora.core.memory_guard  import wipe_memory
-            from nyxora.cli.helpers        import save_session
+            from nyxora.core.memory_guard import wipe_memory
+            from nyxora.core.vault_store import VaultStore
 
             engine   = CryptoEngine()
             salt     = engine.generate_salt()

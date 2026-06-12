@@ -169,7 +169,9 @@ def due(
     """List entries whose password hasn't changed in N days."""
     import datetime
     import time
+
     from rich.table import Table
+
     from nyxora.cli.ui import ELEC_PURPLE, NEON_CYAN, console
 
     store, root_key = _open_vault()
@@ -224,9 +226,8 @@ def due(
 @app.command()
 def health() -> None:
     """Show vault security health score and breakdown."""
-    from nyxora.cli.ui import checklist_panel, danger_panel
-    from rich.table import Table
-    from nyxora.cli.ui import ELEC_PURPLE, NEON_CYAN, console
+
+    from nyxora.cli.ui import checklist_panel
 
     store, root_key = _open_vault()
     try:

@@ -541,8 +541,8 @@ def test_vault_audit_details_encryption(crypto, db_path):
 def test_vault_totp_field(tmp_path):
     """TOTP secret stores, retrieves, and migrates correctly."""
     from nyxora.core.crypto_engine import CryptoEngine
-    from nyxora.core.vault_store import VaultStore
     from nyxora.core.memory_guard import wipe_memory
+    from nyxora.core.vault_store import VaultStore
 
     engine = CryptoEngine(argon2_memory=8192, argon2_time=1, argon2_parallelism=1)
     salt = engine.generate_salt()

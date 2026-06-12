@@ -7,9 +7,8 @@ design language: ambient background, status bars, corner readouts.
 from __future__ import annotations
 
 import random
-from textual.app import ComposeResult
-from textual.widgets import Static
 
+from textual.widgets import Static
 
 # ── Pre-generated ambient background pattern ─────────────────────
 

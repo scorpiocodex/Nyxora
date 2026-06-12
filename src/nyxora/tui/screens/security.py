@@ -9,11 +9,13 @@ import math
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal
 from textual.widgets import Button, Input, Label, Static
 
 from nyxora.tui.screens._shared_bg import (
-    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxTopBar,
 )
 
 

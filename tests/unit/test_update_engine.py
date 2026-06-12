@@ -1,10 +1,14 @@
-from unittest.mock import MagicMock, patch
-from packaging.version import Version
-from nyxora.core.update_engine import (
-    is_newer, should_check_now, verify_checksum,
-    get_wheel_asset, get_checksums_asset, background_check,
-)
+from unittest.mock import patch
+
 from nyxora import __version__
+from nyxora.core.update_engine import (
+    background_check,
+    get_checksums_asset,
+    get_wheel_asset,
+    is_newer,
+    should_check_now,
+    verify_checksum,
+)
 
 
 def test_is_newer_true():
@@ -87,7 +91,8 @@ def test_should_check_now_first_time(tmp_path):
 
 
 def test_should_check_now_recent(tmp_path):
-    import time, json
+    import json
+    import time
     state_file = tmp_path / "update_state.json"
     state_file.write_text(
         json.dumps({"last_check": int(time.time())}),

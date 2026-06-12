@@ -6,15 +6,17 @@ No rollback in TUI — users who need rollback use the CLI.
 """
 from __future__ import annotations
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Static
 
 from nyxora import __version__
+from nyxora.tui._markup import escape
 from nyxora.tui.screens._shared_bg import (
-    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxTopBar,
 )
 
 
@@ -171,13 +173,17 @@ class UpdatesScreen(Static):
             "  [dim]This may take a minute. The app will close.[/dim]"
         )
         try:
-            from nyxora.core.update_engine import (
-                get_wheel_asset, download_asset,
-                get_checksums_asset, verify_checksum,
-                install_wheel, save_rollback_version,
-            )
             import tempfile
             from pathlib import Path
+
+            from nyxora.core.update_engine import (
+                download_asset,
+                get_checksums_asset,
+                get_wheel_asset,
+                install_wheel,
+                save_rollback_version,
+                verify_checksum,
+            )
 
             release      = self._release
             wheel_asset  = get_wheel_asset(release)

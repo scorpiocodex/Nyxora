@@ -94,9 +94,9 @@ def setup() -> None:
         # Persist TOTP secret to vault metadata
         try:  # pragma: no cover
             from nyxora.cli.helpers import load_session  # pragma: no cover
-            from nyxora.core.vault_store import VaultStore  # pragma: no cover
             from nyxora.core.crypto_engine import CryptoEngine  # pragma: no cover
             from nyxora.core.memory_guard import wipe_memory as _wipe  # pragma: no cover
+            from nyxora.core.vault_store import VaultStore  # pragma: no cover
   # pragma: no cover
             _session = load_session()  # pragma: no cover
             if _session is not None:  # pragma: no cover

@@ -8,14 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Input, Label, Static
 
+from nyxora.tui._markup import escape
 from nyxora.tui.screens._shared_bg import (
-    NyxTopBar, NyxBottomBar, NyxCornerInfo,
+    NyxBottomBar,
+    NyxCornerInfo,
+    NyxTopBar,
 )
 
 
@@ -286,10 +288,10 @@ class RecoveryScreen(Static):
         status_msg.update("  [#C89A30]Generating TOTP secret…[/#C89A30]")
 
         try:
-            from nyxora.core.recovery_core import RecoveryManager
+            from nyxora.cli.helpers import open_vault
             from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.cli.helpers        import open_vault
-            from nyxora.core.memory_guard  import wipe_memory
+            from nyxora.core.memory_guard import wipe_memory
+            from nyxora.core.recovery_core import RecoveryManager
 
             engine   = CryptoEngine()
             recovery = RecoveryManager(engine)
@@ -356,11 +358,12 @@ class RecoveryScreen(Static):
 
         out.update("  Creating capsule…")
         try:
-            from nyxora.core.recovery_core import RecoveryManager
-            from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.cli.helpers import open_vault
-            from nyxora.core.memory_guard import wipe_memory
             import time
+
+            from nyxora.cli.helpers import open_vault
+            from nyxora.core.crypto_engine import CryptoEngine
+            from nyxora.core.memory_guard import wipe_memory
+            from nyxora.core.recovery_core import RecoveryManager
 
             engine   = CryptoEngine()
             recovery = RecoveryManager(engine)
@@ -422,11 +425,12 @@ class RecoveryScreen(Static):
         out.update("  Splitting secret…")
 
         try:
-            from nyxora.core.recovery_core import RecoveryManager
-            from nyxora.core.crypto_engine import CryptoEngine
-            from nyxora.cli.helpers import open_vault
-            from nyxora.core.memory_guard import wipe_memory
             import os
+
+            from nyxora.cli.helpers import open_vault
+            from nyxora.core.crypto_engine import CryptoEngine
+            from nyxora.core.memory_guard import wipe_memory
+            from nyxora.core.recovery_core import RecoveryManager
 
             engine   = CryptoEngine()
             recovery = RecoveryManager(engine)
