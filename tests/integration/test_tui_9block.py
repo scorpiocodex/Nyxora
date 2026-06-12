@@ -251,7 +251,18 @@ def test_block2_vault_info_and_health_check(synthetic: SyntheticCtx) -> None:
 # ── BLOCK 3 — Manage ──────────────────────────────────────────────
 
 
-def test_block3_manage_list_detail_copy(synthetic: SyntheticCtx) -> None:
+def test_block3_manage_list_detail_copy(
+    synthetic: SyntheticCtx, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Headless CI runners have no clipboard backend, so stub pyperclip.copy
+    # and assert the app's copy SUCCESS path deterministically everywhere.
+    # (The app's graceful "Copy failed" handling is exercised by real
+    # pyperclip failures, not by this test.)
+    import pyperclip
+
+    copied: list[str] = []
+    monkeypatch.setattr(pyperclip, "copy", copied.append)
+
     async def scenario() -> None:
         app = NyxoraApp(start_screen="manage", exe_mode=False)
         async with app.run_test(size=SIZE) as pilot:
@@ -276,13 +287,12 @@ def test_block3_manage_list_detail_copy(synthetic: SyntheticCtx) -> None:
             assert "testa-password-123" not in detail  # masked by default
             _svg(app, "block3_detail")
 
-            # COPY → no crash, status reflects copy
+            # COPY → no crash, status reflects copy, stub got the password
             await pilot.click(manage.query_one("#btn-copy", Button))
             await pilot.pause(0.3)
             assert any("Copied" in n for n in _notifications(app))
+            assert copied == ["testa-password-123"]
             _svg(app, "block3_copy")
-            import pyperclip
-            pyperclip.copy("")  # don't leave the test password around
 
             # DELETE first press → confirm prompt only, nothing deleted
             lv.focus()
@@ -474,7 +484,15 @@ def test_block6_updates(
 # ── BLOCK 7 — Generate ────────────────────────────────────────────
 
 
-def test_block7_generate(synthetic: SyntheticCtx) -> None:
+def test_block7_generate(
+    synthetic: SyntheticCtx, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Stub pyperclip.copy — headless CI runners have no clipboard backend.
+    import pyperclip
+
+    copied: list[str] = []
+    monkeypatch.setattr(pyperclip, "copy", copied.append)
+
     async def scenario() -> None:
         app = NyxoraApp(start_screen="generate", exe_mode=False)
         async with app.run_test(size=SIZE) as pilot:
@@ -503,13 +521,12 @@ def test_block7_generate(synthetic: SyntheticCtx) -> None:
             assert len(phrase.split("-")) == 5  # 5 words, '-' separator
             _svg(app, "block7_passphrase")
 
-            # Copy → no crash, toast confirms
+            # Copy → no crash, toast confirms, stub got the passphrase
             await pilot.click(gscr.query_one("#btn-copy-gen", Button))
             await pilot.pause(0.3)
             assert any("Copied" in n for n in _notifications(app))
+            assert copied == [phrase]
             _svg(app, "block7_copy")
-            import pyperclip
-            pyperclip.copy("")
 
     asyncio.run(scenario())
 

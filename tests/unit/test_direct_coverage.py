@@ -1,28 +1,58 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from nyxora.cli.commands import backup, locker, vault
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.intel_engine import IntelEngine
+from nyxora.utils.exceptions import NyxoraError
 
 
 def test_intel_direct():
     engine = CryptoEngine()
     intel = IntelEngine(engine)
+    # intel_engine uses requests, so patch at its import site — a controlled
+    # k-anonymity response, never the live HIBP API.
+    prefix, suffix = engine.hash_for_hibp("password123")
 
-    with patch("httpx.Client") as mock_client:
+    # Breached: the password's real SHA-1 suffix appears in the response
+    with patch("nyxora.core.intel_engine.requests.get") as mock_get:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.text = "00000000000000000000000000000000000:5\r\n"
-        mock_client.return_value.__enter__.return_value.get.return_value = mock_resp
+        mock_resp.text = (
+            "0018A45C4D1DEF81644B54AB7F969B88D65:3\r\n"
+            f"{suffix}:5\r\n"
+        )
+        mock_get.return_value = mock_resp
 
-        intel.check_breach_hibp("password123")
-        intel.audit_all([("1", "t", "password123")], check_hibp=True)
+        assert intel.check_breach_hibp("password123") == (True, 5)
+        mock_get.assert_called_once()
+        url = mock_get.call_args[0][0]
+        assert prefix in url        # only the 5-char prefix is sent
+        assert suffix not in url    # k-anonymity: suffix never leaves the host
 
-    with patch("httpx.Client") as mock_client:
+        report = intel.audit_all([("1", "t", "password123")], check_hibp=True)
+        assert report.breached_count == 1
+        assert report.entries[0].is_breached
+        assert report.entries[0].breach_count == 5
+
+    # Not breached: suffix absent from the response body
+    with patch("nyxora.core.intel_engine.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "0018A45C4D1DEF81644B54AB7F969B88D65:3\r\n"
+        mock_get.return_value = mock_resp
+        assert intel.check_breach_hibp("password123") == (False, 0)
+
+    # 429 on every attempt: retries with backoff (sleep stubbed), then raises
+    with patch("nyxora.core.intel_engine.requests.get") as mock_get, \
+         patch("nyxora.core.intel_engine.time.sleep"):
         mock_resp = MagicMock()
         mock_resp.status_code = 429
-        mock_client.return_value.__enter__.return_value.get.return_value = mock_resp
-        intel.check_breach_hibp("password123")
+        mock_get.return_value = mock_resp
+        with pytest.raises(NyxoraError):
+            intel.check_breach_hibp("password123")
+        assert mock_get.call_count == 3
 
     # hit real intel methods
     intel.score_entropy("password123")
