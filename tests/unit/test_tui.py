@@ -725,3 +725,134 @@ def test_unlock_password_field_accepts_all_digits():
             assert pw.value == "abc1234567"
 
     asyncio.run(scenario())
+
+
+# ── Markup-injection render safety ────────────────────────────────
+# A generated password (symbol alphabet includes [ ] =) or a user
+# entry field containing a tag-shaped substring like [on=^D3oNz] used
+# to be interpolated raw into Textual markup. The MarkupError fired at
+# render time inside _refresh_layout — after update(), past every
+# local try/except — and crashed the whole app (the "9block flake").
+
+# Contains the [word=<unparsable>] shape that raises MarkupError when
+# parsed as markup, plus a stray closing tag and a bare '='.
+_CRASH_PATTERN = "a[on=^D3oNz]b[/x]=c"
+
+
+def _plain_text(static) -> str:
+    """The text a Static actually displays, with markup parsed away."""
+    from textual.content import Content
+    content = static.content
+    if isinstance(content, Content):
+        return content.plain
+    return Content.from_markup(str(content)).plain
+
+
+def test_generate_screen_renders_password_with_markup_chars(monkeypatch):
+    """A tag-shaped generated password must render, not crash the app."""
+    import asyncio
+    import itertools
+    import secrets
+
+    from textual.widgets import Static
+
+    import nyxora.tui.screens.generate as generate_mod
+    from nyxora.tui.app import NyxoraApp
+
+    # Make the CSPRNG deterministic: the very first generation (fired by
+    # GenerateScreen.on_mount with the default length of 24) yields the
+    # full crash pattern followed by its own first characters.
+    chars = itertools.cycle(_CRASH_PATTERN)
+    monkeypatch.setattr(secrets, "choice", lambda alphabet: next(chars))
+
+    async def scenario():
+        app = NyxoraApp(start_screen="generate", exe_mode=False)
+        # Pre-fix: MarkupError propagates out of _refresh_layout here
+        # and crashes the app before the context manager even settles.
+        async with app.run_test() as pilot:
+            await pilot.pause(0.4)
+            gen = app.query_one(generate_mod.GenerateScreen)
+            result = app.query_one("#gen-result", Static)
+            # The generated value is a window of the cycled crash
+            # pattern, so it always contains tag-shaped chars...
+            assert "[" in gen._result and "=" in gen._result
+            # ...and must be displayed verbatim, not parsed as markup.
+            assert gen._result in _plain_text(result)
+            # Regenerate (the on_show path the flake hit) — still alive.
+            app.set_focus(None)
+            await pilot.pause()
+            await pilot.press("g")
+            await pilot.pause(0.3)
+            assert gen._result in _plain_text(result)
+
+    asyncio.run(scenario())
+
+
+def test_manage_detail_renders_entry_with_markup_chars_in_title_and_tags(
+    monkeypatch, tmp_path
+):
+    """An entry with tag-shaped title/tags/password must render everywhere.
+
+    Pre-fix this was a persistent soft-brick: the title crashed the
+    EntryItem list row on every load, and title/tags/revealed password
+    crashed the detail panel on every selection.
+    """
+    import asyncio
+    import os
+
+    from textual.widgets import ListView, Static
+
+    import nyxora.cli.helpers as helpers
+    from nyxora.core.crypto_engine import CryptoEngine
+    from nyxora.core.vault_store import VaultStore
+    from nyxora.tui.app import NyxoraApp
+
+    evil_title = "x[on=^]evil"
+    evil_tags  = ["a[=b]", "ok"]
+    evil_pw    = "p[on=^D3oNz]w"
+
+    engine = CryptoEngine()
+    vp = tmp_path / "vault.nyx"
+    root_key = bytearray(os.urandom(32))
+    key_hex = bytes(root_key).hex()
+    store = VaultStore(engine)
+    store.initialize(vp, root_key)
+    store.add_entry(evil_title, evil_pw, username="mallory", tags=evil_tags)
+    store.close()
+
+    monkeypatch.setattr(helpers, "load_session",
+                        lambda: ("s", vp, bytearray.fromhex(key_hex)))
+
+    def fake_open(engine_):
+        s = VaultStore(engine_)
+        s.open(vp, bytearray.fromhex(key_hex))
+        return s, "s", bytearray.fromhex(key_hex), vp
+
+    monkeypatch.setattr(helpers, "open_vault", fake_open)
+
+    async def scenario():
+        app = NyxoraApp(start_screen="manage", exe_mode=False)
+        # Pre-fix: the EntryItem row markup crashes the list render here.
+        async with app.run_test() as pilot:
+            await pilot.pause(0.4)
+            lv = app.query_one("#entry-items", ListView)
+            assert len(lv.children) == 1
+
+            # Select the entry — pre-fix the detail panel crashed here.
+            lv.focus()
+            lv.index = 0
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause(0.3)
+
+            detail = app.query_one("#entry-detail", Static)
+            shown = _plain_text(detail)
+            assert evil_title in shown
+            assert "a[=b]" in shown
+
+            # Reveal the password — the raw value goes into the markup.
+            await pilot.press("p")
+            await pilot.pause(0.3)
+            assert evil_pw in _plain_text(detail)
+
+    asyncio.run(scenario())

@@ -7,6 +7,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -273,7 +274,7 @@ class UnlockScreen(Screen):
             )):
                 msg = "  [red]Wrong password — please try again.[/red]"
             else:
-                msg = f"  [red]Error: {str(exc)[:70]}[/red]"
+                msg = f"  [red]Error: {escape(str(exc)[:70])}[/red]"
             error_label.update(msg)
             pw_input.value = ""
             pw_input.focus()
@@ -443,7 +444,7 @@ class CreateVaultScreen(Screen):
             self.dismiss(True)
 
         except Exception as exc:
-            error_label.update(f"  [red]Failed: {str(exc)[:70]}[/red]")
+            error_label.update(f"  [red]Failed: {escape(str(exc)[:70])}[/red]")
             pw_input.value      = ""
             confirm_input.value = ""
             pw_input.focus()

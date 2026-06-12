@@ -8,6 +8,8 @@ On success, dismisses with True so ManageScreen reloads.
 from __future__ import annotations
 
 import math
+
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, ScrollableContainer
@@ -34,7 +36,7 @@ class EditEntryScreen(Screen):
         with ScrollableContainer():
             with Vertical(id="unlock-box"):
                 yield Static(
-                    f" ◆  EDIT ENTRY — {e.title}",
+                    f" ◆  EDIT ENTRY — {escape(e.title)}",
                     classes="screen-title",
                 )
                 yield Static("", id="edit-error", classes="form-error")
@@ -162,7 +164,7 @@ class EditEntryScreen(Screen):
             self.dismiss(True)
 
         except Exception as exc:
-            error.update(f"  Save failed: {str(exc)[:60]}")
+            error.update(f"  Save failed: {escape(str(exc)[:60])}")
 
     # ── Helpers ──────────────────────────────────────────────────
 

@@ -7,6 +7,8 @@ Shows vault status, info panel, lock/unlock button, health check.
 from __future__ import annotations
 
 from pathlib import Path
+
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -114,7 +116,7 @@ class VaultScreen(Static):
             badge.update(" [bold green]● UNLOCKED[/bold green]")
             info.update(
                 f"\n"
-                f"  [dim]Path[/dim]          {vp}\n"
+                f"  [dim]Path[/dim]          {escape(str(vp))}\n"
                 f"  [dim]Entries[/dim]       {entry_count}\n"
                 f"  [dim]Size[/dim]          {size_kb} KB\n"
                 f"  [dim]Last modified[/dim] {modified}\n"
@@ -139,7 +141,7 @@ class VaultScreen(Static):
         except Exception as exc:
             try:
                 self.query_one("#vault-status-badge", Static).update(
-                    f" [red]● ERROR: {str(exc)[:50]}[/red]"
+                    f" [red]● ERROR: {escape(str(exc)[:50])}[/red]"
                 )
             except Exception:
                 pass
@@ -179,7 +181,7 @@ class VaultScreen(Static):
             )
         except Exception as exc:
             self.app.notify(
-                f"Lock failed: {exc}",
+                f"Lock failed: {escape(str(exc))}",
                 severity="error",
                 timeout=4,
             )
@@ -253,5 +255,5 @@ class VaultScreen(Static):
 
         except Exception as exc:
             result.update(
-                f"\n  [bold red]✗[/bold red]  Health check failed: {exc}\n"
+                f"\n  [bold red]✗[/bold red]  Health check failed: {escape(str(exc))}\n"
             )

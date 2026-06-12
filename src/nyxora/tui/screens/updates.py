@@ -6,6 +6,7 @@ No rollback in TUI — users who need rollback use the CLI.
 """
 from __future__ import annotations
 
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -124,7 +125,7 @@ class UpdatesScreen(Static):
 
             try:
                 self.query_one("#ver-latest", Static).update(
-                    f"[#C89A30]  v{tag}[/#C89A30]"
+                    f"[#C89A30]  v{escape(tag)}[/#C89A30]"
                 )
             except Exception:
                 pass
@@ -133,7 +134,7 @@ class UpdatesScreen(Static):
                 self._update_available = True
                 result.update(
                     f"\n  [bold #C89A30]Update available: "
-                    f"v{tag}[/bold #C89A30]\n\n"
+                    f"v{escape(tag)}[/bold #C89A30]\n\n"
                     f"  Press [bold]i[/bold] or click INSTALL to upgrade.\n"
                     f"  [dim]Nyxora will be upgraded via pip.[/dim]\n"
                     f"  [dim]⚠  The TUI will close during installation.[/dim]\n"
@@ -154,7 +155,7 @@ class UpdatesScreen(Static):
                     pass
 
         except Exception as exc:
-            result.update(f"\n  [red]Check failed: {exc}[/red]\n")
+            result.update(f"\n  [red]Check failed: {escape(str(exc))}[/red]\n")
 
     def action_install(self) -> None:
         if not self._update_available or not self._latest_version:
@@ -166,7 +167,7 @@ class UpdatesScreen(Static):
 
         result = self.query_one("#update-result", Static)
         result.update(
-            f"  Installing v{self._latest_version}…\n"
+            f"  Installing v{escape(self._latest_version)}…\n"
             "  [dim]This may take a minute. The app will close.[/dim]"
         )
         try:
@@ -213,14 +214,16 @@ class UpdatesScreen(Static):
 
             if success:
                 self.app.notify(
-                    f"Updated to v{self._latest_version}. "
+                    f"Updated to v{escape(self._latest_version)}. "
                     "Restart Nyxora to use the new version.",
                     title="◆ Updated",
                     timeout=8,
                 )
                 self.app.exit()
             else:
-                result.update(f"\n  [red]Install failed:\n{msg[:200]}[/red]\n")
+                result.update(
+                    f"\n  [red]Install failed:\n{escape(msg[:200])}[/red]\n"
+                )
 
         except Exception as exc:
-            result.update(f"\n  [red]Install failed: {exc}[/red]\n")
+            result.update(f"\n  [red]Install failed: {escape(str(exc))}[/red]\n")

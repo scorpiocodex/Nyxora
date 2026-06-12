@@ -9,6 +9,7 @@ import datetime
 from pathlib import Path
 from typing import List, Tuple
 
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, ScrollableContainer
@@ -112,7 +113,7 @@ class BackupScreen(Static):
             for i, (name, date, size) in enumerate(backups):
                 marker = "[bold #C89A30]▸[/bold #C89A30]" if i == 0 else " "
                 lines.append(
-                    f"  {marker} {name:<40}  {date:<18}  {size:>8}\n"
+                    f"  {marker} {escape(name):<40}  {date:<18}  {size:>8}\n"
                 )
             lines.append(f"\n  [dim]{len(backups)} backup(s) found.[/dim]\n")
             wrap.update("".join(lines))
@@ -120,7 +121,7 @@ class BackupScreen(Static):
         except Exception as exc:
             try:
                 self.query_one("#backup-table-wrap", Static).update(
-                    f"\n  [red]Error loading backups: {exc}[/red]"
+                    f"\n  [red]Error loading backups: {escape(str(exc))}[/red]"
                 )
             except Exception:
                 pass
@@ -171,9 +172,9 @@ class BackupScreen(Static):
             self._load_backups()
 
         except Exception as exc:
-            status.update(f"  [red]Backup failed: {exc}[/red]")
+            status.update(f"  [red]Backup failed: {escape(str(exc))}[/red]")
             self.app.notify(
-                f"Backup failed: {exc}",
+                f"Backup failed: {escape(str(exc))}",
                 severity="error",
                 timeout=4,
             )
@@ -214,18 +215,18 @@ class BackupScreen(Static):
 
             status.update(
                 f"  [bold green]✓[/bold green]  "
-                f"{latest_name} is valid  ({count} entries)."
+                f"{escape(latest_name)} is valid  ({count} entries)."
             )
             self.app.notify(
-                f"Verified: {latest_name}",
+                f"Verified: {escape(latest_name)}",
                 title="◆ Backup OK",
                 timeout=3,
             )
 
         except Exception as exc:
-            status.update(f"  [red]✗  Verify failed: {exc}[/red]")
+            status.update(f"  [red]✗  Verify failed: {escape(str(exc))}[/red]")
             self.app.notify(
-                f"Verify failed: {exc}",
+                f"Verify failed: {escape(str(exc))}",
                 severity="error",
                 timeout=4,
             )

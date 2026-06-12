@@ -11,6 +11,7 @@ import math
 import time
 from typing import List, Optional
 
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, ScrollableContainer
@@ -32,7 +33,7 @@ class EntryItem(ListItem):
         title    = record.title    or "—"
         username = record.username or ""
         super().__init__(
-            Static(f" {title}\n [dim]{username}[/dim]"),
+            Static(f" {escape(title)}\n [dim]{escape(username)}[/dim]"),
             id=f"ei-{record.id[:8]}",
             classes="entry-item",
         )
@@ -325,7 +326,7 @@ class ManageScreen(Static):
             # Password display
             pw = e.password or ""
             if self._show_password:
-                pw_display = pw
+                pw_display = escape(pw)
                 pw_hint    = "[dim]p to hide[/dim]"
             else:
                 pw_display = "●" * min(len(pw), 20)
@@ -354,8 +355,8 @@ class ManageScreen(Static):
                 except Exception:
                     totp_line = "  [dim]TOTP[/dim]           [dim]—[/dim]\n"
 
-            tags_str  = "  ".join(e.tags)  if e.tags  else "[dim]—[/dim]"
-            notes_str = (e.notes or "—").replace("\n", " ")[:80]
+            tags_str  = escape("  ".join(e.tags)) if e.tags else "[dim]—[/dim]"
+            notes_str = escape((e.notes or "—").replace("\n", " ")[:80])
 
             # Delete confirmation overlay
             confirm = (
@@ -365,13 +366,13 @@ class ManageScreen(Static):
 
             text = (
                 f"\n"
-                f"  [bold #C89A30]{e.title}[/bold #C89A30]"
+                f"  [bold #C89A30]{escape(e.title)}[/bold #C89A30]"
                 f"  [dim]{e.id[:8]}…[/dim]\n"
                 f"  {'─' * 44}\n"
-                f"  [dim]USERNAME[/dim]       {e.username or '[dim]—[/dim]'}\n"
+                f"  [dim]USERNAME[/dim]       {escape(e.username) if e.username else '[dim]—[/dim]'}\n"
                 f"  [dim]PASSWORD[/dim]       {pw_display}  {pw_hint}\n"
                 f"  [dim]STRENGTH[/dim]       {strength}\n"
-                f"  [dim]URL[/dim]            [#3A7A9A]{e.url or '—'}[/#3A7A9A]\n"
+                f"  [dim]URL[/dim]            [#3A7A9A]{escape(e.url) if e.url else '—'}[/#3A7A9A]\n"
                 f"{totp_line}"
                 f"  [dim]TAGS[/dim]           [#C89A30]{tags_str}[/#C89A30]\n"
                 f"  [dim]NOTES[/dim]          [dim]{notes_str}[/dim]\n"
@@ -481,7 +482,7 @@ class ManageScreen(Static):
             self.set_timer(30.0, self._clear_clipboard)
         except Exception as exc:
             self.app.notify(
-                f"Copy failed: {exc}",
+                f"Copy failed: {escape(str(exc))}",
                 severity="error",
                 timeout=3,
             )
@@ -512,7 +513,9 @@ class ManageScreen(Static):
                 timeout=3,
             )
         except Exception as exc:
-            self.app.notify(f"TOTP error: {exc}", severity="error", timeout=3)
+            self.app.notify(
+                f"TOTP error: {escape(str(exc))}", severity="error", timeout=3
+            )
 
     def action_delete_entry(self) -> None:
         if not self._selected:
@@ -553,7 +556,7 @@ class ManageScreen(Static):
             self._selected       = None
             self._show_password  = False
             self.app.notify(
-                f"Deleted: {title}",
+                f"Deleted: {escape(title)}",
                 title="◆ Deleted",
                 timeout=3,
             )
@@ -562,7 +565,7 @@ class ManageScreen(Static):
 
         except Exception as exc:
             self.app.notify(
-                f"Delete failed: {exc}",
+                f"Delete failed: {escape(str(exc))}",
                 severity="error",
                 timeout=4,
             )

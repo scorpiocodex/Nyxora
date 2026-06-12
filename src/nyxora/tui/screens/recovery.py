@@ -7,6 +7,8 @@ Three pathways: TOTP 2FA, Recovery Capsule, Shamir Secret Sharing.
 from __future__ import annotations
 
 from pathlib import Path
+
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -308,7 +310,7 @@ class RecoveryScreen(Static):
             # Status message in left panel
             status_msg.update(
                 f"  [bold #C89A30]Secret:[/bold #C89A30] "
-                f"[dim]{secret}[/dim]\n"
+                f"[dim]{escape(secret)}[/dim]\n"
                 f"  [bold green]✓[/bold green]  Saved to vault.\n"
                 f"  [dim]Scan QR with your authenticator app.[/dim]"
             )
@@ -327,7 +329,7 @@ class RecoveryScreen(Static):
 
         except Exception as exc:
             status_msg.update(
-                f"  [red]TOTP setup failed: {exc}[/red]"
+                f"  [red]TOTP setup failed: {escape(str(exc))}[/red]"
             )
 
     # ── Capsule create ───────────────────────────────────────────
@@ -378,7 +380,7 @@ class RecoveryScreen(Static):
 
             out.update(
                 f"  [bold green]✓[/bold green]  Capsule created:\n"
-                f"  {capsule_path}\n"
+                f"  {escape(str(capsule_path))}\n"
                 f"  [dim]Store this file securely, offline.[/dim]\n"
             )
             self.app.notify(
@@ -389,7 +391,7 @@ class RecoveryScreen(Static):
             self._refresh_status()
 
         except Exception as exc:
-            out.update(f"  [red]Capsule failed: {exc}[/red]")
+            out.update(f"  [red]Capsule failed: {escape(str(exc))}[/red]")
 
     # ── Shamir split ─────────────────────────────────────────────
 
@@ -448,18 +450,18 @@ class RecoveryScreen(Static):
             ]
             for p in paths:
                 lines.append(f"  [dim]  {p}[/dim]\n")
-            lines.append(f"\n  [dim]Written to: {out_dir}[/dim]\n")
+            lines.append(f"\n  [dim]Written to: {escape(str(out_dir))}[/dim]\n")
             out.update("".join(lines))
 
             self.app.notify(
-                f"{n} shares written to {out_dir.name}/",
+                f"{n} shares written to {escape(out_dir.name)}/",
                 title="◆ Shamir",
                 timeout=4,
             )
             self._refresh_status()
 
         except Exception as exc:
-            out.update(f"  [red]Split failed: {exc}[/red]")
+            out.update(f"  [red]Split failed: {escape(str(exc))}[/red]")
 
 
 # ── QR code renderer ─────────────────────────────────────────────

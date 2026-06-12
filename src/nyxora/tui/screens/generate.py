@@ -9,6 +9,7 @@ import math
 import secrets
 import string
 
+from nyxora.tui._markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -161,7 +162,7 @@ class GenerateScreen(Static):
         except Exception as exc:
             try:
                 self.query_one("#gen-result", Static).update(
-                    f"  [red]Generation failed: {exc}[/red]"
+                    f"  [red]Generation failed: {escape(str(exc))}[/red]"
                 )
             except Exception:
                 pass
@@ -186,7 +187,7 @@ class GenerateScreen(Static):
         except Exception as exc:
             try:
                 self.query_one("#gen-result", Static).update(
-                    f"  [red]Generation failed: {exc}[/red]"
+                    f"  [red]Generation failed: {escape(str(exc))}[/red]"
                 )
             except Exception:
                 pass
@@ -195,8 +196,10 @@ class GenerateScreen(Static):
 
     def _show_result(self, value: str) -> None:
         try:
+            # The generated value may contain [ ] = which Textual would
+            # parse as markup and raise MarkupError at render time.
             self.query_one("#gen-result", Static).update(
-                f"\n  [bold #C89A30]{value}[/bold #C89A30]\n"
+                f"\n  [bold #C89A30]{escape(value)}[/bold #C89A30]\n"
             )
             self.query_one("#gen-strength", Static).update(
                 f"  {_strength_label(value)}\n"
@@ -222,7 +225,9 @@ class GenerateScreen(Static):
             )
             self.set_timer(30.0, lambda: pyperclip.copy(""))
         except Exception as exc:
-            self.app.notify(f"Copy failed: {exc}", severity="error", timeout=3)
+            self.app.notify(
+                f"Copy failed: {escape(str(exc))}", severity="error", timeout=3
+            )
 
     # ── Button events ─────────────────────────────────────────────
 
