@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from typer.testing import CliRunner
 
 from nyxora.cli import helpers, ui
@@ -50,14 +51,14 @@ def test_main_cli_execution():
             except SystemExit:
                 pass
 
-        # Mock exceptions
-        import click
-        mock_app.side_effect = click.exceptions.UsageError("test usage error")
-        with patch("nyxora.cli.ui.error_panel"):
-            try:
+        # Any non-NyxoraError must flow through the generic Exception
+        # handler: error panel shown, exit code 1
+        mock_app.side_effect = RuntimeError("test generic error")
+        with patch("nyxora.cli.ui.error_panel") as m_panel:
+            with pytest.raises(SystemExit) as exc_info:
                 cli_main()
-            except SystemExit:
-                pass
+            assert exc_info.value.code == 1
+            m_panel.assert_called_once()
 
 def test_memory_guard_branches():
     from nyxora.core.memory_guard import try_mlock, try_munlock, wipe_memory
