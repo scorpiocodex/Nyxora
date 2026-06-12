@@ -61,26 +61,49 @@ def test_main_cli_execution():
             m_panel.assert_called_once()
 
 def test_memory_guard_branches():
+    from unittest.mock import MagicMock
+
+    from nyxora.core import memory_guard
     from nyxora.core.memory_guard import try_mlock, try_munlock, wipe_memory
 
-    # Mock platform functions to simulate failures and success
+    # memory_guard selects its branch from platform.system() and the
+    # module-level _libc/_kernel32 globals bound at import time, so patch
+    # those seams — they exist on every OS (ctypes.windll does not exist
+    # on Linux, and sys.platform is not what the product reads).
     buf = bytearray(16)
-    with patch("sys.platform", "linux"):
-        with patch("ctypes.CDLL") as m_cdll:
-            try_mlock(buf)
-            try_munlock(buf)
-            m_cdll.return_value.mlock.side_effect = Exception("failed")
-            try_mlock(buf)
 
-    with patch("sys.platform", "win32"):
-        with patch("ctypes.windll.kernel32") as m_win:
-            try_mlock(buf)
-            try_munlock(buf)
-            m_win.VirtualLock.side_effect = Exception("failed")
-            try_mlock(buf)
+    # Linux branch: mlock/munlock return 0 on success
+    fake_libc = MagicMock()
+    fake_libc.mlock.return_value = 0
+    fake_libc.munlock.return_value = 0
+    with patch.object(memory_guard.platform, "system", return_value="Linux"), \
+         patch.object(memory_guard, "_MLOCK_AVAILABLE", True), \
+         patch.object(memory_guard, "_libc", fake_libc):
+        assert try_mlock(buf) is True
+        assert try_munlock(buf) is True
+        fake_libc.mlock.side_effect = Exception("failed")
+        assert try_mlock(buf) is False
+    assert fake_libc.mlock.call_count == 2
+    fake_libc.munlock.assert_called_once()
 
-    # wipe_memory
+    # Windows branch: VirtualLock/VirtualUnlock return nonzero on success
+    fake_k32 = MagicMock()
+    fake_k32.VirtualLock.return_value = 1
+    fake_k32.VirtualUnlock.return_value = 1
+    with patch.object(memory_guard.platform, "system", return_value="Windows"), \
+         patch.object(memory_guard, "_MLOCK_AVAILABLE", True), \
+         patch.object(memory_guard, "_kernel32", fake_k32):
+        assert try_mlock(buf) is True
+        assert try_munlock(buf) is True
+        fake_k32.VirtualLock.side_effect = Exception("failed")
+        assert try_mlock(buf) is False
+    assert fake_k32.VirtualLock.call_count == 2
+    fake_k32.VirtualUnlock.assert_called_once()
+
+    # wipe_memory zeroes the buffer in place
+    buf[:] = b"\xaa" * 16
     wipe_memory(buf)
+    assert buf == bytearray(16)
 
 def test_helpers_branches():
     from nyxora.utils.config import Config

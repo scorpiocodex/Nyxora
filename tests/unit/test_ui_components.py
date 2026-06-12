@@ -1,3 +1,6 @@
+import threading
+from unittest.mock import patch
+
 from nyxora.cli.ui import (
     audit_summary_panel,
     checklist_panel,
@@ -45,5 +48,15 @@ def test_new_ui_components():
     recovery_status_panel(True, ["cap.capsule"], ["share_1.bin"])
     recovery_status_panel(False, [], [])
 
-    # clipboard_countdown
-    clipboard_countdown(seconds=30)
+    # clipboard_countdown — the daemon thread must clear the clipboard.
+    # Stub pyperclip (headless CI has no clipboard backend, and the real
+    # clipboard should not be touched locally) and wait for the thread.
+    cleared = threading.Event()
+
+    def fake_copy(value: str) -> None:
+        assert value == ""
+        cleared.set()
+
+    with patch("pyperclip.copy", fake_copy):
+        clipboard_countdown(seconds=0)
+        assert cleared.wait(timeout=5)
