@@ -167,12 +167,24 @@ def test_nyx_corner_info():
 
 
 def test_tui_cmd_no_textual(monkeypatch):
-    """tui command handles missing textual gracefully."""
+    """tui command handles missing textual gracefully.
+
+    The command guards `from nyxora.tui.app import launch_tui` with
+    `except ImportError`. To exercise that branch deterministically we must
+    (a) raise on every `textual` / `textual.*` import — app.py imports via
+    `from textual.app import App`, i.e. the name "textual.app", not the bare
+    "textual" — and (b) evict the already-cached nyxora.tui modules so the
+    guard's import actually re-runs and hits the mock. Without (a)+(b) the
+    guard silently falls through and launches the real Textual app in-process
+    (it only "passes" when that app happens to exit fast), which can hang.
+    """
     import builtins
+    import sys
+
     real_import = builtins.__import__
 
     def mock_import(name, *args, **kwargs):
-        if name == "textual":
+        if name == "textual" or name.startswith("textual."):
             raise ImportError("textual not installed")
         return real_import(name, *args, **kwargs)
 
@@ -182,9 +194,16 @@ def test_tui_cmd_no_textual(monkeypatch):
 
     runner = CliRunner()
     with monkeypatch.context() as m:
+        for mod in [
+            name for name in sys.modules
+            if name == "nyxora.tui" or name.startswith("nyxora.tui.")
+        ]:
+            m.delitem(sys.modules, mod, raising=False)
         m.setattr(builtins, "__import__", mock_import)
         result = runner.invoke(tui_app)
-    assert result.exit_code in (0, 1)
+    # ImportError branch taken → graceful "TUI Unavailable" exit, never the
+    # real app.
+    assert result.exit_code == 1
 
 
 # ── Focus-aware nav bindings (C2 fix: priority=True removed) ──────

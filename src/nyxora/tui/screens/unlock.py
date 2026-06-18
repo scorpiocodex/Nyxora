@@ -9,7 +9,7 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
@@ -48,7 +48,7 @@ class UnlockScreen(Screen):
     #unlock-center {
         width: 100%;
         height: 1fr;
-        align: center middle;
+        align: center top;
     }
     #unlock-box {
         width: 52;
@@ -154,8 +154,9 @@ class UnlockScreen(Screen):
                     ["KEYRING: ACTIVE", "SESSION: NONE", "VAULT: LOCKED"],
                 )
 
-            # Centre form
-            with Vertical(id="unlock-center"):
+            # Centre form — scrollable so an over-tall card scrolls
+            # instead of clipping its buttons on a short terminal.
+            with ScrollableContainer(id="unlock-center"):
                 with Vertical(id="unlock-box"):
                     yield Static(
                         "[#C89A30]──────────────────────────────[/#C89A30]",
@@ -296,7 +297,7 @@ class CreateVaultScreen(Screen):
     #create-center {
         width: 100%;
         height: 1fr;
-        align: center middle;
+        align: center top;
     }
     #create-box {
         width: 52;
@@ -332,7 +333,7 @@ class CreateVaultScreen(Screen):
                     ["MIN 8 CHARACTERS", "STORE SECURELY"],
                 )
 
-            with Vertical(id="create-center"):
+            with ScrollableContainer(id="create-center"):
                 with Vertical(id="create-box"):
                     yield Static(
                         "[bold #C89A30]◆  NYXORA[/bold #C89A30]",
