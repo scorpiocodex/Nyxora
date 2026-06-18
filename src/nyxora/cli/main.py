@@ -123,6 +123,16 @@ def cli_main() -> None:
     import os
     import sys
 
+    # Legacy Windows consoles default to cp1252, which cannot encode the Rich
+    # banner's box-drawing glyphs (the `nyx --help` art) and raises
+    # UnicodeEncodeError. Degrade gracefully to UTF-8 with replacement so
+    # output never crashes on incapable consoles; unchanged on capable ones.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     try:
         app()
     except SystemExit:

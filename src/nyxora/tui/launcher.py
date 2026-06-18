@@ -67,6 +67,13 @@ def run_app() -> None:
     Routes to the appropriate TUI screen based on vault state.
     """
     try:
+        # Degrade gracefully on legacy cp1252 consoles so the startup-error
+        # path (and any glyphs) never raises UnicodeEncodeError.
+        for _stream in (sys.stdout, sys.stderr):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
         _maximize_console_window()
         from nyxora.tui.app import NyxoraApp
         app = NyxoraApp(
