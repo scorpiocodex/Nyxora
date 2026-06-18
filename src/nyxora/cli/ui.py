@@ -64,7 +64,7 @@ _BANNER = r"""
 ██║╚██╗██║  ╚██╔╝   ██╔██╗ ██║   ██║██╔══██╗██╔══██║
 ██║ ╚████║   ██║   ██╔╝ ██╗╚██████╔╝██║  ██║██║  ██║
 ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-  Terminal-native · Offline · Zero-Knowledge · Quantum-Resilient
+  Terminal-native · Offline · Zero-Knowledge
 """
 
 

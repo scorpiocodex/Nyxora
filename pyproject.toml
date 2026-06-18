@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "nyxora"
 version = "3.0.1"
-description = "Terminal-native, offline, zero-knowledge, quantum-resilient password intelligence vault"
+description = "An offline, zero-knowledge, terminal-native password manager."
 readme = "README.md"
 authors = [
   { name = "ScorpioCodeX", email = "scorpiocodex0@gmail.com" }

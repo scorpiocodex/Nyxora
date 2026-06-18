@@ -37,7 +37,7 @@ app = typer.Typer(
 
 [bold #00FFFF]NYXORA[/] — Next-Generation Password Intelligence Vault.
 
-[#00FF41]Offline[/] • [#8B00FF]Zero-Knowledge[/] • [#00FFFF]Terminal-Native[/] • [#FFB000]Quantum-Resilient[/]
+[#00FF41]Offline[/] • [#8B00FF]Zero-Knowledge[/] • [#00FFFF]Terminal-Native[/]
 """,
     epilog="Execute [bold #00FFFF]nyx <command> --help[/] for encrypted module instructions.",
     no_args_is_help=True,

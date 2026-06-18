@@ -1,4 +1,4 @@
-"""NYXORA — Terminal-native, offline, zero-knowledge, quantum-resilient password vault."""
+"""NYXORA — An offline, zero-knowledge, terminal-native password manager."""
 
 __version__ = "3.0.1"
 __author__ = "ScorpioCodeX"
