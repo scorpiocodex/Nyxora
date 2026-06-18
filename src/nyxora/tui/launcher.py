@@ -11,8 +11,30 @@ This file is the PyInstaller entry point. The CLI (main.py) is unchanged.
 """
 from __future__ import annotations
 
+import ctypes
 import sys
 from pathlib import Path
+
+
+def _maximize_console_window() -> None:
+    """Best-effort maximize the hosting console on Windows. No-op elsewhere.
+
+    Double-clicking the packaged exe opens a default-sized console; a maximized
+    window gives the TUI room and avoids short-viewport clipping. Purely
+    cosmetic — any failure is swallowed so it can never block launch.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        SW_MAXIMIZE = 3
+        windll = getattr(ctypes, "windll", None)
+        if windll is None:
+            return
+        hwnd = windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            windll.user32.ShowWindow(hwnd, SW_MAXIMIZE)
+    except Exception:
+        pass  # a cosmetic maximize must never block launch
 
 
 def get_default_vault_path() -> Path:
@@ -45,6 +67,7 @@ def run_app() -> None:
     Routes to the appropriate TUI screen based on vault state.
     """
     try:
+        _maximize_console_window()
         from nyxora.tui.app import NyxoraApp
         app = NyxoraApp(
             start_screen=_resolve_start_screen(),
