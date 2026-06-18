@@ -102,7 +102,6 @@ class UnlockScreen(Screen):
     }
     #unlock-btns {
         width: 100%;
-        height: auto;
         margin-top: 1;
     }
     #btn-unlock {
@@ -185,7 +184,7 @@ class UnlockScreen(Screen):
                         id="unlock-password",
                     )
                     yield Static("", id="unlock-error")
-                    with Horizontal(id="unlock-btns"):
+                    with Horizontal(id="unlock-btns", classes="card-btns"):
                         yield Button(
                             "⬡  UNLOCK VAULT",
                             id="btn-unlock",
@@ -365,7 +364,7 @@ class CreateVaultScreen(Screen):
                         "[#141E28]Min 8 characters · Stored locally · Never uploaded[/#141E28]",
                         id="create-hint",
                     )
-                    with Horizontal(id="unlock-btns"):
+                    with Horizontal(id="unlock-btns", classes="card-btns"):
                         yield Button(
                             "⬡  CREATE VAULT",
                             id="btn-create",

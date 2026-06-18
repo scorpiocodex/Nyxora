@@ -50,7 +50,7 @@ class EditEntryScreen(Screen):
                             id="edit-username")
 
                 yield Label("Password", classes="form-label")
-                with Horizontal():
+                with Horizontal(classes="card-btns"):
                     yield Input(value=e.password or "",
                                 password=True,
                                 id="edit-password")
@@ -75,7 +75,7 @@ class EditEntryScreen(Screen):
                 yield Input(placeholder="Base32 secret or leave blank",
                             id="edit-totp")
 
-                with Horizontal():
+                with Horizontal(classes="card-btns"):
                     yield Button("  SAVE CHANGES", id="btn-save",
                                  classes="primary")
                     yield Button("  CANCEL",       id="btn-cancel")

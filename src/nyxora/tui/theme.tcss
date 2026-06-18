@@ -728,6 +728,16 @@ NyxSep {
     padding: 2 3;
 }
 
+/* Card button/action rows reserve the buttons' intrinsic height (Button =
+   height 3) at every window size. Without this they inherit Horizontal's
+   default height: 1fr, which expands when the card has slack (large window)
+   but collapses to a single row when the card must scroll (short window),
+   cropping the buttons to their top border with no label. Single source of
+   truth — applied via the .card-btns class so no screen can silently miss it. */
+.card-btns {
+    height: auto;
+}
+
 /* ── Recovery screen QR split layout ─────────────────────── */
 
 #recovery-main {

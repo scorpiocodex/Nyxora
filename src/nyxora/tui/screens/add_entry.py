@@ -41,7 +41,7 @@ class AddEntryScreen(Screen):
                             id="add-username")
 
                 yield Label("Password", classes="form-label")
-                with Horizontal():
+                with Horizontal(classes="card-btns"):
                     yield Input(placeholder="Leave blank to generate",
                                 password=True,
                                 id="add-password")
@@ -61,7 +61,7 @@ class AddEntryScreen(Screen):
                 yield Input(placeholder="Optional notes",
                             id="add-notes")
 
-                with Horizontal():
+                with Horizontal(classes="card-btns"):
                     yield Button("  SAVE",   id="btn-save",   classes="primary")
                     yield Button("  CANCEL", id="btn-cancel")
 
