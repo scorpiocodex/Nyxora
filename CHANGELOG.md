@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.1] - 2026-06-18
+
+### Fixed
+- **Windows exe opens maximized** — double-clicking the packaged `nyx.exe`
+  now best-effort maximizes the hosting console window
+  (`user32.ShowWindow(SW_MAXIMIZE)`, Windows-only, never blocks launch), so
+  the TUI gets full room on first paint
+- **Scroll-and-fit layout** — the unlock, create-vault, and workspace
+  screens now scroll instead of clipping their content on short terminals;
+  the unlock card's UNLOCK VAULT / QUIT buttons are no longer pushed
+  off-screen on a default ~24-row console (was: clipped with no way to
+  reach them)
+- **cp1252 console safety** — `nyx --help` (and the release build script)
+  no longer raise `UnicodeEncodeError` on legacy Windows consoles that
+  cannot encode the Rich banner's box-drawing glyphs; stdout/stderr are
+  reconfigured to UTF-8 with replacement, unchanged on capable terminals
+
+### Added
+- **Small-viewport regression test** — a Textual Pilot test at 80x24 asserts
+  the unlock and create-vault buttons stay reachable, guarding against the
+  clip returning
+- **ROADMAP.md** — published the development and version roadmap (semver
+  policy, the 3.0.x stabilization line through 5.0 post-quantum)
+
+### CI
+- Bumped the publish workflow's `actions/checkout` (v4 → v5) and
+  `actions/setup-python` (v5 → v6) to Node-24-compatible versions
+
+---
+
 ## [3.0.0] "Nexus" - 2026-06-11
 
 ### Added

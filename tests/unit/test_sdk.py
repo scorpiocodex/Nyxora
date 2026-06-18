@@ -140,7 +140,7 @@ def test_vault_client_health(tmp_path):
 
 
 def test_version_export():
-    assert __version__ == "3.0.0"
+    assert __version__ == "3.0.1"
 
 
 # ── C3: CLI ↔ SDK KDF cross-compatibility ──────────────────────────────
