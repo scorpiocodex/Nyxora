@@ -61,6 +61,17 @@ def _assert_button_ok(button: Button, label: str) -> None:
     )
 
 
+def _assert_within_card(card, widget, label: str) -> None:
+    """A control must sit within its card horizontally — if it overflows the
+    card's right edge it is clipped (label cut off) and not mouse-usable."""
+    wr, cr = widget.region, card.region
+    assert cr.x <= wr.x and wr.right <= cr.right, (
+        f"{label}: control overflows the card horizontally (card x={cr.x}.."
+        f"{cr.right}, control x={wr.x}..{wr.right}) — it is clipped at the "
+        f"card edge with its label cut off"
+    )
+
+
 def test_unlock_buttons_not_clipped_on_short_viewport() -> None:
     """Control: UnlockScreen already used height: auto and must stay healthy."""
     async def scenario() -> None:
@@ -132,6 +143,43 @@ def test_edit_entry_buttons_not_clipped_on_short_viewport() -> None:
             )
             _assert_button_ok(
                 app.screen.query_one("#btn-gen-pw", Button), "edit-generate"
+            )
+
+    asyncio.run(scenario())
+
+
+def test_add_entry_generate_button_within_card() -> None:
+    """The password-row GENERATE button must stay within the card, not be
+    pushed past its right edge by a full-width password Input."""
+    async def scenario() -> None:
+        app = NyxoraApp(start_screen="unlock", exe_mode=False)
+        async with app.run_test(size=SHORT) as pilot:
+            await pilot.pause(0.2)
+            await app.push_screen(AddEntryScreen())
+            await pilot.pause(0.3)
+            assert isinstance(app.screen, AddEntryScreen)
+            _assert_within_card(
+                app.screen.query_one("#unlock-box"),
+                app.screen.query_one("#btn-gen-pw", Button),
+                "add-generate",
+            )
+
+    asyncio.run(scenario())
+
+
+def test_edit_entry_generate_button_within_card() -> None:
+    async def scenario() -> None:
+        record = EntryRecord(id="t1", title="Example", password="hunter2pw")
+        app = NyxoraApp(start_screen="unlock", exe_mode=False)
+        async with app.run_test(size=SHORT) as pilot:
+            await pilot.pause(0.2)
+            await app.push_screen(EditEntryScreen(record))
+            await pilot.pause(0.3)
+            assert isinstance(app.screen, EditEntryScreen)
+            _assert_within_card(
+                app.screen.query_one("#unlock-box"),
+                app.screen.query_one("#btn-gen-pw", Button),
+                "edit-generate",
             )
 
     asyncio.run(scenario())

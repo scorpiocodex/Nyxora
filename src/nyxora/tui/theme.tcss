@@ -738,6 +738,17 @@ NyxSep {
     height: auto;
 }
 
+/* An Input sharing a card row with a button (the add/edit password +
+   GENERATE row) must flex, not consume the whole row: Input default width is
+   100%, which pushed the auto-width GENERATE button past the card's right
+   edge (clipped, label cut off). width: 1fr lets the Input take the leftover
+   space after the button keeps its intrinsic width, so both fit in the card.
+   Matches only password-style rows — button-only .card-btns rows have no
+   Input. */
+.card-btns Input {
+    width: 1fr;
+}
+
 /* ── Recovery screen QR split layout ─────────────────────── */
 
 #recovery-main {
