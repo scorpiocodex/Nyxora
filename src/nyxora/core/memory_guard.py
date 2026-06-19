@@ -94,10 +94,10 @@ def try_mlock(data: bytearray) -> bool:
         addr = ctypes.addressof((ctypes.c_char * len(data)).from_buffer(data))
         if platform.system() == "Linux" and _libc is not None:
             result = _libc.mlock(ctypes.c_void_p(addr), ctypes.c_size_t(len(data)))  # pragma: no cover
-            return result == 0  # pragma: no cover
+            return bool(result == 0)  # pragma: no cover
         elif platform.system() == "Windows" and _kernel32 is not None:
             result = _kernel32.VirtualLock(ctypes.c_void_p(addr), ctypes.c_size_t(len(data)))
-            return result != 0
+            return bool(result != 0)
         return False  # pragma: no cover
     except Exception:  # pragma: no cover
         return False  # pragma: no cover
@@ -114,10 +114,10 @@ def try_munlock(data: bytearray) -> bool:
         addr = ctypes.addressof((ctypes.c_char * len(data)).from_buffer(data))
         if platform.system() == "Linux" and _libc is not None:
             result = _libc.munlock(ctypes.c_void_p(addr), ctypes.c_size_t(len(data)))  # pragma: no cover
-            return result == 0  # pragma: no cover
+            return bool(result == 0)  # pragma: no cover
         elif platform.system() == "Windows" and _kernel32 is not None:
             result = _kernel32.VirtualUnlock(ctypes.c_void_p(addr), ctypes.c_size_t(len(data)))
-            return result != 0
+            return bool(result != 0)
         return False  # pragma: no cover
     except Exception:  # pragma: no cover
         return False  # pragma: no cover

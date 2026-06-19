@@ -46,7 +46,8 @@ def _load_key_fallback(session_id: str) -> str | None:
         import json as _json
         data = _json.loads(SESSION_KEY_FILE.read_text(encoding="utf-8"))
         if data.get("session_id") == session_id:
-            return data.get("key")
+            key: str | None = data.get("key")
+            return key
     except Exception:
         pass
     return None
@@ -156,18 +157,19 @@ def clear_session() -> None:
     _clear_key_fallback()
 
 
-def load_profiles() -> dict:
+def load_profiles() -> dict[str, Any]:
     """Load the profiles registry from disk."""
     if not PROFILES_FILE.exists():
         return {"profiles": {}, "active": None}
     try:
         import json as _json
-        return _json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
+        profiles: dict[str, Any] = _json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
+        return profiles
     except Exception:
         return {"profiles": {}, "active": None}
 
 
-def save_profiles(data: dict) -> None:
+def save_profiles(data: dict[str, Any]) -> None:
     """Persist the profiles registry to disk."""
     import json as _json
     PROFILES_FILE.parent.mkdir(parents=True, exist_ok=True)

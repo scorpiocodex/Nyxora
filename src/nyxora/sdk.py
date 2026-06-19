@@ -20,6 +20,7 @@ Usage::
 """
 from __future__ import annotations
 
+import builtins
 from pathlib import Path
 from typing import Any, Optional
 
@@ -214,7 +215,7 @@ class VaultClient:
             entries = [e for e in entries if tag in e.tags]
         return entries
 
-    def search(self, query: str) -> list[EntryRecord]:
+    def search(self, query: str) -> builtins.list[EntryRecord]:
         """Search entries by title, username, URL, or tags.
 
         Args:
@@ -232,7 +233,7 @@ class VaultClient:
         username: Optional[str] = None,
         url: Optional[str] = None,
         notes: Optional[str] = None,
-        tags: Optional[list[str]] = None,
+        tags: Optional[builtins.list[str]] = None,
         custom: Optional[dict[str, str]] = None,
         totp_secret: Optional[str] = None,
     ) -> str:
@@ -255,7 +256,7 @@ class VaultClient:
         username: Optional[str] = None,
         url: Optional[str] = None,
         notes: Optional[str] = None,
-        tags: Optional[list[str]] = None,
+        tags: Optional[builtins.list[str]] = None,
         custom: Optional[dict[str, str]] = None,
         totp_secret: Optional[str] = None,
     ) -> None:
@@ -284,7 +285,7 @@ class VaultClient:
         """
         import pyotp
         record = self.get(entry_id)
-        if not getattr(record, "totp_secret", None):
+        if not record.totp_secret:
             raise NyxoraError(
                 f"Entry '{record.title}' has no TOTP secret configured."
             )

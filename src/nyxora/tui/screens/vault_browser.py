@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 import pyotp
 from textual import on
@@ -31,7 +32,7 @@ class EntryListItem(ListItem):
             yield Label(sub, classes="entry-sub")
 
 
-class VaultBrowserScreen(Screen):
+class VaultBrowserScreen(Screen[None]):
     """Main vault browser: entry list (left) + detail panel (right)."""
 
     _filter: reactive[str] = reactive("", recompose=False)
@@ -43,7 +44,7 @@ class VaultBrowserScreen(Screen):
         entries: list[EntryRecord],
         vault_path: str,
         session_id: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self._all_entries: list[EntryRecord] = entries
@@ -83,7 +84,7 @@ class VaultBrowserScreen(Screen):
             or any(q in t.lower() for t in e.tags)
         ]
 
-    def _populate_list(self, entries: list) -> None:
+    def _populate_list(self, entries: list[Any]) -> None:
         lv = self.query_one("#entry-list", ListView)
         lv.clear()
         for entry in entries:
@@ -123,7 +124,7 @@ class VaultBrowserScreen(Screen):
         sc = strength_colors.get(strength, "#888780")
 
         totp_line = ""
-        if getattr(record, "totp_secret", None):
+        if record.totp_secret:
             code = pyotp.TOTP(record.totp_secret).now()
             remaining = 30 - (int(time.time()) % 30)
             totp_line = f"\n[#344252]TOTP CODE   [/#344252][#2A7A4A]{code[:3]} {code[3:]}[/#2A7A4A]  [#C89A30]{remaining}s[/#C89A30]"
@@ -195,7 +196,7 @@ class VaultBrowserScreen(Screen):
         record = self._get_selected()
         if not record:
             return
-        if not getattr(record, "totp_secret", None):
+        if not record.totp_secret:
             self.notify("No TOTP secret on this entry.", severity="warning")
             return
         code = pyotp.TOTP(record.totp_secret).now()

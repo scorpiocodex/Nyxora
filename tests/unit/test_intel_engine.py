@@ -123,15 +123,20 @@ def test_vault_health_score():
     # Mock entries
     now = int(time.time())
     e1 = MagicMock()
-    e1.id = "id1"; e1.password = "X#9kLmP!qRsT2vWz"
-    e1.updated_at = now; e1.totp_secret = "JBSWY3DP"
+    e1.id = "id1"
+    e1.password = "X#9kLmP!qRsT2vWz"
+    e1.updated_at = now
+    e1.totp_secret = "JBSWY3DP"
 
     e2 = MagicMock()
-    e2.id = "id2"; e2.password = "correcthorsebatterystaple"
-    e2.updated_at = now; e2.totp_secret = None
+    e2.id = "id2"
+    e2.password = "correcthorsebatterystaple"
+    e2.updated_at = now
+    e2.totp_secret = None
 
     e3 = MagicMock()
-    e3.id = "id3"; e3.password = "abc"   # weak
+    e3.id = "id3"
+    e3.password = "abc"   # weak
     e3.updated_at = now - (200 * 86400)  # 200 days old
     e3.totp_secret = None
 

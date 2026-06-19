@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 import secrets
 import string
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -39,7 +40,7 @@ class GenerateScreen(Static):
         Binding("c", "copy_result",     "Copy",       show=True),
     ]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._mode   = "password"
         self._result = ""
@@ -149,10 +150,14 @@ class GenerateScreen(Static):
             use_symbols = self.query_one("#chk-symbols", Checkbox).value
 
             alphabet = ""
-            if use_upper:   alphabet += string.ascii_uppercase
-            if use_lower:   alphabet += string.ascii_lowercase
-            if use_digits:  alphabet += string.digits
-            if use_symbols: alphabet += "!@#$%^&*()_+-=[]{}|;:,.<>?"
+            if use_upper:
+                alphabet += string.ascii_uppercase
+            if use_lower:
+                alphabet += string.ascii_lowercase
+            if use_digits:
+                alphabet += string.digits
+            if use_symbols:
+                alphabet += "!@#$%^&*()_+-=[]{}|;:,.<>?"
 
             if not alphabet:
                 alphabet = string.ascii_letters + string.digits
@@ -241,7 +246,7 @@ class GenerateScreen(Static):
             "btn-gen-pp":   self._generate_passphrase,
             "btn-copy-gen": self._do_copy,
         }
-        handler = dispatch.get(event.button.id)
+        handler = dispatch.get(event.button.id or "")
         if handler:
             handler()
 
@@ -277,16 +282,25 @@ def _strength_label(value: str) -> str:
     if not value:
         return ""
     charset = 0
-    if any(c.islower()     for c in value): charset += 26
-    if any(c.isupper()     for c in value): charset += 26
-    if any(c.isdigit()     for c in value): charset += 10
-    if any(not c.isalnum() for c in value): charset += 32
+    if any(c.islower()     for c in value):
+        charset += 26
+    if any(c.isupper()     for c in value):
+        charset += 26
+    if any(c.isdigit()     for c in value):
+        charset += 10
+    if any(not c.isalnum() for c in value):
+        charset += 32
     bits = int(len(value) * math.log2(max(charset, 1)))
     bar_filled = min(20, bits // 8)
     bar = "█" * bar_filled + "░" * (20 - bar_filled)
-    if bits < 28:   tag = "[bold red]Very Weak[/bold red]"
-    elif bits < 40: tag = "[red]Weak[/red]"
-    elif bits < 60: tag = "[#C89A30]Fair[/#C89A30]"
-    elif bits < 128: tag = "[#3A7A9A]Strong[/#3A7A9A]"
-    else:           tag = "[bold green]Excellent[/bold green]"
+    if bits < 28:
+        tag = "[bold red]Very Weak[/bold red]"
+    elif bits < 40:
+        tag = "[red]Weak[/red]"
+    elif bits < 60:
+        tag = "[#C89A30]Fair[/#C89A30]"
+    elif bits < 128:
+        tag = "[#3A7A9A]Strong[/#3A7A9A]"
+    else:
+        tag = "[bold green]Excellent[/bold green]"
     return f"  [dim]{bar}[/dim]  {tag}  [dim]{bits} bits[/dim]"

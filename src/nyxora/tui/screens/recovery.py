@@ -7,6 +7,7 @@ Three pathways: TOTP 2FA, Recovery Capsule, Shamir Secret Sharing.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -38,7 +39,7 @@ class RecoveryScreen(Static):
         Binding("r", "refresh",      "Refresh", show=False),
     ]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._active_protocol = "totp"
 
@@ -264,7 +265,7 @@ class RecoveryScreen(Static):
             "btn-capsule-create":self._do_capsule_create,
             "btn-shamir-split":  self._do_shamir_split,
         }
-        handler = dispatch.get(event.button.id)
+        handler = dispatch.get(event.button.id or "")
         if handler:
             handler()
 

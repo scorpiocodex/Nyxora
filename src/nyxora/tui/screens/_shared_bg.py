@@ -7,6 +7,7 @@ design language: ambient background, status bars, corner readouts.
 from __future__ import annotations
 
 import random
+from typing import Any
 
 from textual.widgets import Static
 
@@ -72,7 +73,7 @@ class NyxBackground(Static):
     }
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(BG_PATTERN, **kwargs)
 
 
@@ -98,7 +99,7 @@ class NyxTopBar(Static):
     def __init__(
         self,
         items: list[tuple[str, bool]],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         parts: list[str] = []
         for i, (text, active) in enumerate(items):
@@ -138,7 +139,7 @@ class NyxBottomBar(Static):
         "[#1A2535]SCORPIOCODEX[/#1A2535]"
     )
 
-    def __init__(self, text: str = "", **kwargs) -> None:
+    def __init__(self, text: str = "", **kwargs: Any) -> None:
         super().__init__(text or self._DEFAULT_TEXT, **kwargs)
 
 
@@ -164,7 +165,7 @@ class NyxCornerInfo(Static):
         self,
         label: str,
         lines: list[str],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         lbl  = f"[#1A2838]{label}[/#1A2838]\n"
         body = "\n".join(
@@ -189,7 +190,7 @@ class NyxSep(Static):
     }
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(
             "[#1A2535]──────────────────[/#1A2535]"
             "[#C89A30]◆[/#C89A30]"

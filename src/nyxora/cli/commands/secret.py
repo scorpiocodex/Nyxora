@@ -10,7 +10,7 @@ from nyxora.cli.helpers import complete_entry_ids, open_vault
 from nyxora.cli.ui import clipboard_countdown, is_json_mode, json_out, update_diff_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
-from nyxora.core.vault_store import VaultStore
+from nyxora.core.vault_store import EntryRecord, VaultStore
 
 app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
 
@@ -21,7 +21,7 @@ def _open_vault() -> tuple[VaultStore, bytearray]:
     return store, root_key
 
 
-def _resolve_entry(store: VaultStore, entry_id: str):
+def _resolve_entry(store: VaultStore, entry_id: str) -> EntryRecord:
     """Resolve entry by UUID first, then by title search fallback."""
     from nyxora.utils.exceptions import EntryNotFoundError
     try:
@@ -198,13 +198,20 @@ def update(
         changed_tags = False
 
     changed = []
-    if title: changed.append("title")
-    if username: changed.append("username")
-    if new_password: changed.append("password")
-    if url: changed.append("url")
-    if notes: changed.append("notes")
-    if changed_tags: changed.append("tags")
-    if totp_secret is not None: changed.append("totp-secret")
+    if title:
+        changed.append("title")
+    if username:
+        changed.append("username")
+    if new_password:
+        changed.append("password")
+    if url:
+        changed.append("url")
+    if notes:
+        changed.append("notes")
+    if changed_tags:
+        changed.append("tags")
+    if totp_secret is not None:
+        changed.append("totp-secret")
 
     store, root_key = _open_vault()
     try:
@@ -294,7 +301,9 @@ def totp(
             raise typer.Exit(1)
 
         def _show_code() -> None:
-            totp_obj = pyotp.TOTP(record.totp_secret)
+            secret = record.totp_secret
+            assert secret is not None  # guaranteed by the guard above
+            totp_obj = pyotp.TOTP(secret)
             code = totp_obj.now()
             remaining = 30 - (int(time.time()) % 30)
             filled = int((remaining / 30) * 20)
