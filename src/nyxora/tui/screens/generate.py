@@ -66,7 +66,10 @@ class GenerateScreen(Static):
         with Vertical(id="panel-password"):
             yield Label("Length  (8 – 128)", classes="form-label")
             yield Input(value="24", id="gen-length")
-            with Horizontal():
+            # card-btns -> height: auto; without it this Horizontal inherits the
+            # default height: 1fr and inflates into an empty bordered strip below
+            # the Length input on any window with vertical slack.
+            with Horizontal(classes="card-btns"):
                 yield Checkbox("Uppercase",  value=True,  id="chk-upper")
                 yield Checkbox("Lowercase",  value=True,  id="chk-lower")
                 yield Checkbox("Digits",     value=True,  id="chk-digits")
