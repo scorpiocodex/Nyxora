@@ -71,7 +71,7 @@ class SessionManager:
             self._last_activity = time.time()
 
         self._start_inactivity_monitor()
-        return self._session_id  # type: ignore[return-value]
+        return self._session_id
 
     def lock(self, reason: str = "manual") -> None:
         """Wipe the root key from memory and stop the inactivity monitor."""

@@ -193,10 +193,11 @@ class VaultScreen(Static):
     def _push_unlock(self) -> None:
         from nyxora.tui.screens.unlock import UnlockScreen
 
-        def _on_done(success: bool) -> None:
+        def _on_done(success: bool | None) -> None:
             self._refresh_status()
             try:
-                self.app._update_header_status()
+                # NyxoraApp-specific method; self.app is typed as base App.
+                self.app._update_header_status()  # type: ignore[attr-defined]
             except Exception:
                 pass
             if success:

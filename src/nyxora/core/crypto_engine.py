@@ -174,7 +174,7 @@ class CryptoEngine:
 
     def _derive_argon2id(self, pw_bytes: bytes, salt: bytes) -> bytearray:
         try:
-            from argon2.low_level import Type, hash_secret_raw  # type: ignore[import]
+            from argon2.low_level import Type, hash_secret_raw
             raw = hash_secret_raw(
                 secret=pw_bytes,
                 salt=salt,
@@ -354,7 +354,7 @@ class CryptoEngine:
                 nonce=ef.nonce,
                 key=key,
             )
-        except nacl.exceptions.CryptoError as exc:  # type: ignore[attr-defined]
+        except nacl.exceptions.CryptoError as exc:
             raise DecryptionError("XChaCha20 authentication tag verification failed.") from exc
 
     def _decrypt_aesgcm(

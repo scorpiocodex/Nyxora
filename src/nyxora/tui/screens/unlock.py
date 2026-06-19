@@ -36,7 +36,7 @@ def _read_kdf_salt(vault_path: Path) -> bytes | None:
 
 # ── Unlock screen ─────────────────────────────────────────────────
 
-class UnlockScreen(Screen):
+class UnlockScreen(Screen[bool]):
     """Full-screen vault unlock overlay with Obsidian Tactical design."""
 
     BINDINGS = [Binding("escape", "app.quit", "Quit", show=True)]
@@ -284,7 +284,7 @@ class UnlockScreen(Screen):
 
 # ── Create vault screen ───────────────────────────────────────────
 
-class CreateVaultScreen(Screen):
+class CreateVaultScreen(Screen[bool]):
     """Full-screen vault creation overlay."""
 
     BINDINGS = [Binding("escape", "app.quit", "Quit", show=True)]

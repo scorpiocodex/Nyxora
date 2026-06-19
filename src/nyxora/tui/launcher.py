@@ -49,7 +49,9 @@ def run_app() -> None:
         # path (and any glyphs) never raises UnicodeEncodeError.
         for _stream in (sys.stdout, sys.stderr):
             try:
-                _stream.reconfigure(encoding="utf-8", errors="replace")
+                # reconfigure() exists on TextIOWrapper at runtime but not on
+                # the TextIO stub; guarded by try/except for non-wrapper streams.
+                _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
             except Exception:
                 pass
         from nyxora.tui.app import NyxoraApp

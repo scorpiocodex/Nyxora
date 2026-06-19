@@ -59,7 +59,7 @@ class NavItem(ListItem):
 
 # ── Main application ─────────────────────────────────────────────
 
-class NyxoraApp(App):
+class NyxoraApp(App[None]):
     """
     Nyxora v3.0.0 "Nexus" TUI application.
 
@@ -173,7 +173,7 @@ class NyxoraApp(App):
             ) else "manage"
             self._switch_to(target)
 
-    def _on_vault_ready(self, success: bool) -> None:
+    def _on_vault_ready(self, success: bool | None) -> None:
         """Called when UnlockScreen or CreateVaultScreen dismisses."""
         if success:
             self._switch_to("manage")
@@ -285,7 +285,9 @@ class NyxoraApp(App):
             timeout=6,
         )
 
-    def action_quit(self) -> None:
+    # Textual's run_action awaits sync or async action methods; a sync
+    # override is supported at runtime even though the base is async.
+    def action_quit(self) -> None:  # type: ignore[override]
         if self.exe_mode:
             try:
                 from nyxora.cli.helpers import clear_session, load_session

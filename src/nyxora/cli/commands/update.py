@@ -12,7 +12,8 @@ app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
 def _get_channel() -> str:
     config = Config()
     config.load()
-    return config.get("update.channel", "stable")
+    channel: str = config.get("update.channel", "stable")
+    return channel
 
 
 @app.command()
@@ -51,8 +52,8 @@ def check() -> None:
         return
 
     # Summarise release notes — first 8 non-empty lines
-    notes_lines = [l for l in body.splitlines() if l.strip()][:8]
-    notes = "\n".join(f"  {l}" for l in notes_lines)
+    notes_lines = [line for line in body.splitlines() if line.strip()][:8]
+    notes = "\n".join(f"  {line}" for line in notes_lines)
     if not notes:
         notes = "  See release notes on GitHub."
 

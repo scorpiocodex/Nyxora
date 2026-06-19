@@ -1,6 +1,8 @@
 """Audit dashboard screen."""
 from __future__ import annotations
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
@@ -9,14 +11,14 @@ from textual.widgets import Footer, Static
 from nyxora.core.vault_store import EntryRecord
 
 
-class AuditScreen(Screen):
+class AuditScreen(Screen[None]):
     """Vault health score and entry audit overview."""
 
     BINDINGS = [
         Binding("escape,q", "back", "Back"),
     ]
 
-    def __init__(self, entries: list[EntryRecord], **kwargs) -> None:
+    def __init__(self, entries: list[EntryRecord], **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._entries = entries
 

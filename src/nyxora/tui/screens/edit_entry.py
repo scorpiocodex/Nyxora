@@ -8,6 +8,7 @@ On success, dismisses with True so ManageScreen reloads.
 from __future__ import annotations
 
 import math
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -19,7 +20,7 @@ from nyxora.core.vault_store import EntryRecord
 from nyxora.tui._markup import escape
 
 
-class EditEntryScreen(Screen):
+class EditEntryScreen(Screen[bool]):
     """Full-screen edit-entry form, pre-populated from an EntryRecord."""
 
     BINDINGS = [
@@ -27,7 +28,7 @@ class EditEntryScreen(Screen):
         Binding("ctrl+s", "save",   "Save",   show=True),
     ]
 
-    def __init__(self, record: EntryRecord, **kwargs) -> None:
+    def __init__(self, record: EntryRecord, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._record = record
 
@@ -144,7 +145,7 @@ class EditEntryScreen(Screen):
             engine = CryptoEngine()
             store, _, root_key, _ = open_vault(engine)
 
-            kwargs: dict = dict(
+            kwargs: dict[str, Any] = dict(
                 entry_id = self._record.id,
                 title    = title,
                 username = username,
@@ -172,7 +173,11 @@ class EditEntryScreen(Screen):
         try:
             from nyxora.core.crypto_engine import CryptoEngine
             engine = CryptoEngine()
-            pw = engine.generate_password(length=24)
+            # NOTE: CryptoEngine has no generate_password(); this primary path
+            # always raises AttributeError and falls through to the secrets
+            # fallback below. Known latent bug (tracked for a follow-up); the
+            # ignore keeps #2 type-only with no behaviour change.
+            pw: str = engine.generate_password(length=24)  # type: ignore[attr-defined]
         except Exception:
             import secrets
             import string
@@ -188,16 +193,25 @@ class EditEntryScreen(Screen):
                 hint.update("")
                 return
             charset = 0
-            if any(c.islower()     for c in password): charset += 26
-            if any(c.isupper()     for c in password): charset += 26
-            if any(c.isdigit()     for c in password): charset += 10
-            if any(not c.isalnum() for c in password): charset += 32
+            if any(c.islower()     for c in password):
+                charset += 26
+            if any(c.isupper()     for c in password):
+                charset += 26
+            if any(c.isdigit()     for c in password):
+                charset += 10
+            if any(not c.isalnum() for c in password):
+                charset += 32
             bits = int(len(password) * math.log2(max(charset, 1)))
-            if bits < 28:   label = f"[bold red]Very Weak[/bold red]  {bits} bits"
-            elif bits < 40: label = f"[red]Weak[/red]  {bits} bits"
-            elif bits < 60: label = f"[#C89A30]Fair[/#C89A30]  {bits} bits"
-            elif bits < 128: label = f"[#3A7A9A]Strong[/#3A7A9A]  {bits} bits"
-            else:            label = f"[bold green]Excellent[/bold green]  {bits} bits"
+            if bits < 28:
+                label = f"[bold red]Very Weak[/bold red]  {bits} bits"
+            elif bits < 40:
+                label = f"[red]Weak[/red]  {bits} bits"
+            elif bits < 60:
+                label = f"[#C89A30]Fair[/#C89A30]  {bits} bits"
+            elif bits < 128:
+                label = f"[#3A7A9A]Strong[/#3A7A9A]  {bits} bits"
+            else:
+                label = f"[bold green]Excellent[/bold green]  {bits} bits"
             hint.update(f"  {label}")
         except Exception:
             pass

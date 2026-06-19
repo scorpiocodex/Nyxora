@@ -29,15 +29,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      # Lint and type findings are reported but non-blocking until the
-      # full cleanup pass (tracked for v3.0.1); pytest is the gate.
+      # Lint and type gates restored to blocking in #2 (v3.1.0 Sentinel)
+      # after clearing the pre-existing ruff + mypy findings.
       - name: Run ruff lint
         run: ruff check src/ tests/
-        continue-on-error: true
 
       - name: Run mypy type check
         run: mypy src/nyxora
-        continue-on-error: true
 
       - name: Run tests
         run: pytest tests/ -x -q --timeout=60

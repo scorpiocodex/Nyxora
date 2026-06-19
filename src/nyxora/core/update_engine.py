@@ -40,7 +40,8 @@ def _load_state() -> dict[str, Any]:
     if not STATE_FILE.exists():
         return {}
     try:
-        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        data: dict[str, Any] = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        return data
     except Exception:
         return {}
 
@@ -72,7 +73,8 @@ def fetch_latest_release(channel: str = "stable") -> dict[str, Any] | None:
             resp = requests.get(GITHUB_LATEST, timeout=REQUEST_TIMEOUT,
                                 headers={"Accept": "application/vnd.github.v3+json"})
             if resp.status_code == 200:
-                return resp.json()
+                release: dict[str, Any] = resp.json()
+                return release
             return None
         else:
             # pre-release: fetch all releases, take the first one
@@ -99,7 +101,7 @@ def is_newer(release: dict[str, Any]) -> bool:
 
 def get_wheel_asset(release: dict[str, Any]) -> dict[str, Any] | None:
     """Find the .whl asset in a release, preferring py3-none-any."""
-    assets = release.get("assets", [])
+    assets: list[dict[str, Any]] = release.get("assets", [])
     for asset in assets:
         name = asset.get("name", "")
         if name.endswith(".whl"):
@@ -109,7 +111,8 @@ def get_wheel_asset(release: dict[str, Any]) -> dict[str, Any] | None:
 
 def get_checksums_asset(release: dict[str, Any]) -> dict[str, Any] | None:
     """Find a sha256sums.txt asset in a release."""
-    for asset in release.get("assets", []):
+    assets: list[dict[str, Any]] = release.get("assets", [])
+    for asset in assets:
         if asset.get("name", "").lower() in ("sha256sums.txt", "checksums.txt"):
             return asset
     return None
@@ -213,7 +216,7 @@ def rollback_to_previous() -> tuple[bool, str]:
 def should_check_now(interval_hours: int = 24) -> bool:
     """Return True if enough time has passed since the last update check."""
     state = _load_state()
-    last = state.get("last_check", 0)
+    last: float = state.get("last_check", 0)
     return (time.time() - last) >= (interval_hours * 3600)
 
 

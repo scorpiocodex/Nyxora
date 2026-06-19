@@ -136,9 +136,11 @@ def ssh_key(
         Ed25519PrivateKey,  # pragma: no cover
     )
     from cryptography.hazmat.primitives.asymmetric.rsa import (
+        RSAPrivateKey,  # pragma: no cover
         generate_private_key,  # pragma: no cover
     )
   # pragma: no cover
+    private_key: Ed25519PrivateKey | RSAPrivateKey  # pragma: no cover
     if algorithm == "ed25519":  # pragma: no cover
         private_key = Ed25519PrivateKey.generate()  # pragma: no cover
     elif algorithm == "rsa":  # pragma: no cover
@@ -147,7 +149,7 @@ def ssh_key(
         ui.error_panel(f"Unknown algorithm: {algorithm}. Use 'ed25519' or 'rsa'.")  # pragma: no cover
         raise typer.Exit(1)  # pragma: no cover
   # pragma: no cover
-    enc_algo = serialization.NoEncryption()  # pragma: no cover
+    enc_algo: serialization.KeySerializationEncryption = serialization.NoEncryption()  # pragma: no cover
     if use_passphrase:  # pragma: no cover
         import questionary  # pragma: no cover
         pwd = questionary.password("Enter passphrase for SSH key:").ask()  # pragma: no cover

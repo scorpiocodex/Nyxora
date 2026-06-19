@@ -6,6 +6,8 @@ No rollback in TUI — users who need rollback use the CLI.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -28,11 +30,11 @@ class UpdatesScreen(Static):
         Binding("i", "install", "Install", show=False),
     ]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._latest_version: str | None = None
         self._update_available: bool     = False
-        self._release: dict | None       = None
+        self._release: dict[str, Any] | None       = None
 
     def compose(self) -> ComposeResult:
         yield NyxTopBar([
@@ -186,6 +188,9 @@ class UpdatesScreen(Static):
             )
 
             release      = self._release
+            if release is None:
+                result.update("\n  [red]Run Check first.[/red]\n")
+                return
             wheel_asset  = get_wheel_asset(release)
             if not wheel_asset:
                 result.update("\n  [red]No wheel asset found in release.[/red]\n")

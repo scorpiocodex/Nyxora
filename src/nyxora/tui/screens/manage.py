@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -68,7 +68,7 @@ class ManageScreen(Static):
         Binding("escape", "clear_search",  "Clear",  show=False),
     ]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._entries:  List[EntryRecord]       = []
         self._filtered: List[EntryRecord]       = []
@@ -424,7 +424,7 @@ class ManageScreen(Static):
             "btn-totp":   self.action_show_totp,
             "btn-delete": self.action_delete_entry,
         }
-        handler = dispatch.get(event.button.id)
+        handler = dispatch.get(event.button.id or "")
         if handler:
             handler()
 
@@ -461,7 +461,7 @@ class ManageScreen(Static):
             self._on_entry_saved,
         )
 
-    def _on_entry_saved(self, success: bool) -> None:
+    def _on_entry_saved(self, success: bool | None) -> None:
         """Called when AddEntryScreen or EditEntryScreen dismisses."""
         if success:
             self._load_entries()
@@ -579,16 +579,24 @@ def _strength_label(password: str) -> str:
     if not password:
         return "[dim]—[/dim]"
     charset = 0
-    if any(c.islower()  for c in password): charset += 26
-    if any(c.isupper()  for c in password): charset += 26
-    if any(c.isdigit()  for c in password): charset += 10
-    if any(not c.isalnum() for c in password): charset += 32
+    if any(c.islower()  for c in password):
+        charset += 26
+    if any(c.isupper()  for c in password):
+        charset += 26
+    if any(c.isdigit()  for c in password):
+        charset += 10
+    if any(not c.isalnum() for c in password):
+        charset += 32
     bits = int(len(password) * math.log2(max(charset, 1)))
-    if bits < 28:  return f"[bold red]Very Weak[/bold red]   {bits} bits"
-    if bits < 40:  return f"[red]Weak[/red]          {bits} bits"
-    if bits < 60:  return f"[#C89A30]Fair[/#C89A30]          {bits} bits"
-    if bits < 128: return f"[#3A7A9A]Strong[/#3A7A9A]        {bits} bits"
-    return             f"[bold green]Excellent[/bold green]     {bits} bits"
+    if bits < 28:
+        return f"[bold red]Very Weak[/bold red]   {bits} bits"
+    if bits < 40:
+        return f"[red]Weak[/red]          {bits} bits"
+    if bits < 60:
+        return f"[#C89A30]Fair[/#C89A30]          {bits} bits"
+    if bits < 128:
+        return f"[#3A7A9A]Strong[/#3A7A9A]        {bits} bits"
+    return f"[bold green]Excellent[/bold green]     {bits} bits"
 
 
 def _fmt_ts(ts: int) -> str:

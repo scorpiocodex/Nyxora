@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import io
 from pathlib import Path
+from typing import Any
 
 import orjson
 import typer
@@ -65,8 +66,8 @@ def import_entries(
     )
 
     if dry_run:
-        for e in entries[:10]:
-            ui.print_kv("  Title", e.get("title", "(no title)"))
+        for entry in entries[:10]:
+            ui.print_kv("  Title", entry.get("title", "(no title)"))
         if len(entries) > 10:
             ui.print_line(
                 f"  [#888780]... and {len(entries) - 10} more[/#888780]"
@@ -129,7 +130,7 @@ def _detect_format(file: Path) -> str:
     return "csv"  # default fallback
 
 
-def _parse_file(file: Path, fmt: str) -> list[dict]:
+def _parse_file(file: Path, fmt: str) -> list[dict[str, Any]]:
     """Parse a file into a list of entry dicts."""
     if fmt == "csv":
         return _parse_csv(file)
@@ -142,7 +143,7 @@ def _parse_file(file: Path, fmt: str) -> list[dict]:
     return []
 
 
-def _parse_csv(file: Path) -> list[dict]:
+def _parse_csv(file: Path) -> list[dict[str, Any]]:
     """Parse a CSV with columns: title, username, password, url, notes."""
     text = file.read_text(encoding="utf-8-sig")  # handle BOM
     reader = csv.DictReader(io.StringIO(text))
@@ -161,17 +162,18 @@ def _parse_csv(file: Path) -> list[dict]:
     return entries
 
 
-def _parse_nyxora_json(file: Path) -> list[dict]:
+def _parse_nyxora_json(file: Path) -> list[dict[str, Any]]:
     """Parse Nyxora's own JSON export format."""
     data = orjson.loads(file.read_bytes())
     if isinstance(data, list):
         return data
     if isinstance(data, dict) and "entries" in data:
-        return data["entries"]
+        entries: list[dict[str, Any]] = data["entries"]
+        return entries
     return []
 
 
-def _parse_bitwarden(file: Path) -> list[dict]:
+def _parse_bitwarden(file: Path) -> list[dict[str, Any]]:
     """Parse a Bitwarden JSON export."""
     data = orjson.loads(file.read_bytes())
     items = data.get("items", [])
@@ -191,7 +193,7 @@ def _parse_bitwarden(file: Path) -> list[dict]:
     return entries
 
 
-def _parse_1password(file: Path) -> list[dict]:
+def _parse_1password(file: Path) -> list[dict[str, Any]]:
     """Parse a 1Password CSV export."""
     # 1Password CSV: Title, Username, Password, URL, Notes, Type
     return _parse_csv(file)  # column names overlap enough

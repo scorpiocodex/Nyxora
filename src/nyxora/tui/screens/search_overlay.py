@@ -8,7 +8,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label
 
 
-class SearchScreen(ModalScreen):
+class SearchScreen(ModalScreen[None]):
     """Modal search overlay — filters the entry list in real time."""
 
     DEFAULT_CSS = """

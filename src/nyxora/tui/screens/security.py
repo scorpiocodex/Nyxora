@@ -6,6 +6,7 @@ Section 7: paste-and-check password strength analyser.
 from __future__ import annotations
 
 import math
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -32,7 +33,7 @@ class SecurityScreen(Static):
         Binding("escape", "clear", "Clear", show=True),
     ]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._history: list[tuple[str, str]] = []  # (masked, grade)
 
@@ -102,10 +103,14 @@ class SecurityScreen(Static):
         has_upper   = any(c.isupper()     for c in password)
         has_digits  = any(c.isdigit()     for c in password)
         has_symbols = any(not c.isalnum() for c in password)
-        if has_lower:   charset += 26
-        if has_upper:   charset += 26
-        if has_digits:  charset += 10
-        if has_symbols: charset += 32
+        if has_lower:
+            charset += 26
+        if has_upper:
+            charset += 26
+        if has_digits:
+            charset += 10
+        if has_symbols:
+            charset += 32
 
         bits = int(len(password) * math.log2(max(charset, 1)))
 
@@ -113,17 +118,29 @@ class SecurityScreen(Static):
         bar = "█" * bar_filled + "░" * (20 - bar_filled)
 
         if bits < 28:
-            grade = "F"; colour = "bold red";    advice = "Far too weak — use a password manager to generate a strong one."
+            grade = "F"
+            colour = "bold red"
+            advice = "Far too weak — use a password manager to generate a strong one."
         elif bits < 40:
-            grade = "D"; colour = "red";         advice = "Weak — too short or too simple. Aim for 12+ chars with symbols."
+            grade = "D"
+            colour = "red"
+            advice = "Weak — too short or too simple. Aim for 12+ chars with symbols."
         elif bits < 60:
-            grade = "C"; colour = "#C89A30";     advice = "Fair — could be stronger. Add length or more character types."
+            grade = "C"
+            colour = "#C89A30"
+            advice = "Fair — could be stronger. Add length or more character types."
         elif bits < 80:
-            grade = "B"; colour = "#3A7A9A";     advice = "Good — solid for most purposes."
+            grade = "B"
+            colour = "#3A7A9A"
+            advice = "Good — solid for most purposes."
         elif bits < 128:
-            grade = "A"; colour = "green";       advice = "Strong — well above average."
+            grade = "A"
+            colour = "green"
+            advice = "Strong — well above average."
         else:
-            grade = "A+"; colour = "bold green"; advice = "Excellent — very high entropy. Great choice."
+            grade = "A+"
+            colour = "bold green"
+            advice = "Excellent — very high entropy. Great choice."
 
         charset_desc = ", ".join(filter(None, [
             "lowercase"   if has_lower   else "",
@@ -157,10 +174,14 @@ class SecurityScreen(Static):
         if not password:
             return
         charset = 0
-        if any(c.islower()     for c in password): charset += 26
-        if any(c.isupper()     for c in password): charset += 26
-        if any(c.isdigit()     for c in password): charset += 10
-        if any(not c.isalnum() for c in password): charset += 32
+        if any(c.islower()     for c in password):
+            charset += 26
+        if any(c.isupper()     for c in password):
+            charset += 26
+        if any(c.isdigit()     for c in password):
+            charset += 10
+        if any(not c.isalnum() for c in password):
+            charset += 32
         bits  = int(len(password) * math.log2(max(charset, 1)))
         grade = (
             "F" if bits < 28 else "D" if bits < 40 else

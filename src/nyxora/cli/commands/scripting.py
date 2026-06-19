@@ -11,6 +11,7 @@ from nyxora.cli import ui
 from nyxora.cli.helpers import open_vault
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
+from nyxora.core.vault_store import EntryRecord, VaultStore
 
 app = typer.Typer(
     rich_markup_mode="rich",
@@ -19,7 +20,7 @@ app = typer.Typer(
 _engine = CryptoEngine()
 
 
-def _resolve_entry(store, entry_id: str):  # pragma: no cover
+def _resolve_entry(store: VaultStore, entry_id: str) -> EntryRecord:  # pragma: no cover
     """Resolve entry by UUID first, then by title search fallback."""
     from nyxora.utils.exceptions import EntryNotFoundError
     try:
@@ -276,7 +277,7 @@ def fzf(
         elif field == "url":
             output = record.url or ""
         elif field == "totp":
-            if not getattr(record, "totp_secret", None):
+            if not record.totp_secret:
                 ui.error_panel("This entry has no TOTP secret stored.")
                 raise typer.Exit(1)
             output = pyotp.TOTP(record.totp_secret).now()

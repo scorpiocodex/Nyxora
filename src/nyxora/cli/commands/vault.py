@@ -113,8 +113,8 @@ def unlock(
                 wipe_memory(root_key)
                 # IntegrityError on open almost always means wrong password,
                 # not actual tampering — give the user an accurate message.
-                from nyxora.utils.exceptions import IntegrityError as _IE
-                if isinstance(e, _IE):
+                from nyxora.utils.exceptions import IntegrityError
+                if isinstance(e, IntegrityError):
                     ui.error_panel(
                         "Wrong password or corrupted vault.\n"
                         "If you are sure the password is correct, run "

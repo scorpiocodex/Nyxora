@@ -761,6 +761,9 @@ class VaultStore:
                 finally:
                     wipe_memory(entry_key)
 
+                # title and password are required fields, so enc() never
+                # returns None for them — assert to narrow bytes | None → bytes.
+                assert t_enc is not None and p_enc is not None
                 fields_for_mac: dict[str, bytes] = {
                     "title_enc": t_enc,
                     "password_enc": p_enc,
