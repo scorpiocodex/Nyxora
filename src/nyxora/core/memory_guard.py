@@ -76,7 +76,9 @@ if platform.system() == "Linux":
         pass  # pragma: no cover
 elif platform.system() == "Windows":
     try:
-        _kernel32 = ctypes.windll.kernel32
+        # ctypes.windll exists only on Windows; getattr avoids a Linux-mypy
+        # attr-defined error while staying guarded by the platform check above.
+        _kernel32 = getattr(ctypes, "windll").kernel32
         _MLOCK_AVAILABLE = True
     except OSError:  # pragma: no cover
         pass  # pragma: no cover
