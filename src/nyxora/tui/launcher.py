@@ -14,10 +14,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from nyxora.utils.paths import default_vault_path
+
 
 def get_default_vault_path() -> Path:
-    """Return the default vault path (~/.nyxora/vault.nyx)."""
-    return Path.home() / ".nyxora" / "vault.nyx"
+    """Return the default vault path (<nyxora_home>/vault.nyx)."""
+    return default_vault_path()
 
 
 def vault_exists() -> bool:

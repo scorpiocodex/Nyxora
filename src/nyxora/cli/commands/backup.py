@@ -14,13 +14,14 @@ from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
 from nyxora.core.vault_store import VaultStore
 from nyxora.utils.exceptions import BackupError
+from nyxora.utils.paths import nyxora_home
 
 app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
 
 _engine = CryptoEngine()
 
 def _get_backup_dir() -> Path:
-    return Path.home() / ".nyxora" / "backups"
+    return nyxora_home() / "backups"
 
 
 
@@ -155,7 +156,7 @@ def verify(
 ) -> None:
     """Verify the integrity of a backup file."""
     if backup_file is None:  # pragma: no cover
-        backup_dir = Path.home() / ".nyxora" / "backups"  # pragma: no cover
+        backup_dir = nyxora_home() / "backups"  # pragma: no cover
         if not backup_dir.exists():  # pragma: no cover
             ui.error_panel("No backups directory found. Run 'nyx backup create' first.")  # pragma: no cover
             raise typer.Exit(1)  # pragma: no cover

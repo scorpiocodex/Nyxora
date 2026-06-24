@@ -20,6 +20,7 @@ from nyxora.tui.screens._shared_bg import (
     NyxCornerInfo,
     NyxTopBar,
 )
+from nyxora.utils.paths import nyxora_home
 
 
 class RecoveryScreen(Static):
@@ -127,7 +128,7 @@ class RecoveryScreen(Static):
                     yield Input(value="3", id="shamir-k")
                     yield Label("Output directory", classes="form-label")
                     yield Input(
-                        value=str(Path.home() / ".nyxora" / "shares"),
+                        value=str(nyxora_home() / "shares"),
                         id="shamir-dir",
                     )
                     yield Button(
@@ -175,7 +176,7 @@ class RecoveryScreen(Static):
         except Exception:
             totp_ok = False
 
-        nyxora_dir = Path.home() / ".nyxora"
+        nyxora_dir = nyxora_home()
         capsule_ok = bool(list(nyxora_dir.rglob("*.capsule"))) \
             if nyxora_dir.exists() else False
         shamir_ok  = bool(list(nyxora_dir.rglob("share_*.bin"))) \
@@ -374,7 +375,7 @@ class RecoveryScreen(Static):
             store.close()
 
             capsule_path = (
-                Path.home() / ".nyxora" /
+                nyxora_home() /
                 f"recovery_{int(time.time())}.capsule"
             )
             recovery.create_recovery_capsule(

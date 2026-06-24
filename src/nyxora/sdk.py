@@ -37,6 +37,7 @@ from nyxora.core.vault_store import (
     recover_interrupted_password_change,
 )
 from nyxora.utils.exceptions import EntryNotFoundError, NyxoraError
+from nyxora.utils.paths import default_vault_path
 
 
 class VaultClient:
@@ -164,7 +165,7 @@ class VaultClient:
         vp_cfg = config.get("vault.default_path")
         if vp_cfg:
             return Path(vp_cfg)
-        return Path.home() / ".nyxora" / "vault.nyx"
+        return default_vault_path()
 
     def _require_open(self) -> VaultStore:
         if self._store is None:
