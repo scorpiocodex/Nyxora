@@ -112,10 +112,14 @@ class ManageScreen(Static):
                         id="entry-detail",
                     )
                 with Horizontal(id="action-bar"):
-                    yield Button("COPY",   id="btn-copy",   classes="primary")
-                    yield Button("EDIT",   id="btn-edit")
-                    yield Button("TOTP",   id="btn-totp")
-                    yield Button("DELETE", id="btn-delete", classes="danger")
+                    # Start disabled: nothing is selected on mount. They enable
+                    # in _sync_action_buttons() once an entry is selected.
+                    yield Button("COPY",   id="btn-copy",   classes="primary",
+                                 disabled=True)
+                    yield Button("EDIT",   id="btn-edit",   disabled=True)
+                    yield Button("TOTP",   id="btn-totp",   disabled=True)
+                    yield Button("DELETE", id="btn-delete", classes="danger",
+                                 disabled=True)
         with Horizontal(classes="nyx-corners-bot"):
             yield NyxCornerInfo("CIPHER", ["XCHACHA20-POLY1305"])
             yield Static("", classes="corner-spacer")
@@ -128,6 +132,17 @@ class ManageScreen(Static):
         self._load_entries()
         self.set_interval(1.0, self._tick)
         self._focus_list()
+        self._sync_action_buttons()
+
+    def _sync_action_buttons(self) -> None:
+        """Enable the COPY/EDIT/TOTP/DELETE buttons only when an entry is
+        selected; disable them (keeping the bar visible) otherwise."""
+        disabled = self._selected is None
+        for bid in ("#btn-copy", "#btn-edit", "#btn-totp", "#btn-delete"):
+            try:
+                self.query_one(bid, Button).disabled = disabled
+            except Exception:
+                pass
 
     def on_show(self) -> None:
         """Reload entries — debounced to prevent double-firing."""
@@ -299,9 +314,11 @@ class ManageScreen(Static):
                     if entry.id == self._selected.id:
                         lv.index = i
                         self._render_detail()
+                        self._sync_action_buttons()
                         return
 
             self._selected = None
+            self._sync_action_buttons()
             count = len(self._filtered)
             try:
                 self.query_one("#entry-detail", Static).update(
@@ -400,6 +417,7 @@ class ManageScreen(Static):
             self._show_password  = False
             self._delete_pending = False
             self._render_detail()
+            self._sync_action_buttons()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "entry-search":
