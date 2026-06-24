@@ -18,8 +18,9 @@ from textual.app import App, ComposeResult
 
 from nyxora.tui.screens._shared_bg import NyxCornerInfo
 
-DIM = "#344252"        # legible-dim tone (shared with #4's labels)
-INVISIBLE = "#0e1820"  # the near-background colour the data lines must leave
+DIM = "#344252"          # legible-dim tone (shared with #4's labels)
+INVISIBLE = "#0e1820"    # near-background colour the data lines must leave
+DIM_HEADING = "#1a2838"  # too-dim heading colour the headings must leave
 
 
 class _CornerProbe(App[None]):
@@ -42,8 +43,14 @@ def test_corner_readout_text_is_legible() -> None:
                 f"corner-readout data lines still render near-invisible "
                 f"{INVISIBLE} on the #0B0D12 background — spans={colors}"
             )
-            assert DIM in colors, (
-                f"corner-readout data lines are not the legible-dim {DIM} — "
+            assert DIM_HEADING not in colors, (
+                f"corner-readout heading still renders too-dim {DIM_HEADING} — "
+                f"spans={colors}"
+            )
+            # The whole readout (heading + data lines) is now uniformly the
+            # legible-dim tone.
+            assert colors and all(c == DIM for c in colors), (
+                f"corner readout is not uniformly the legible-dim {DIM} — "
                 f"spans={colors}"
             )
 
