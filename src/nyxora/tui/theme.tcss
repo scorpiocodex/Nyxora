@@ -193,6 +193,19 @@ ContentSwitcher {
     height: 1fr;
 }
 
+/* Action bar (COPY/USER/URL/EDIT/TOTP/DELETE). The six buttons share the row
+   width so they never overflow the detail panel at narrow widths — Textual's
+   default Button min-width (16) would otherwise push them past the right edge
+   and clip them. height: auto keeps the bar hugging the buttons instead of
+   inflating to the default 1fr. */
+#action-bar {
+    height: auto;
+}
+#action-bar Button {
+    width: 1fr;
+    min-width: 0;
+}
+
 .entry-detail-title {
     color: #C89A30;
     text-style: bold;
