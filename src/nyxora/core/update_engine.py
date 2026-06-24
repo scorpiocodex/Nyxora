@@ -19,13 +19,14 @@ from packaging.version import Version
 
 from nyxora import __version__
 from nyxora.utils.exceptions import NyxoraError
+from nyxora.utils.paths import nyxora_home
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 GITHUB_API_BASE = "https://api.github.com/repos/scorpiocodex/Nyxora/releases"
 GITHUB_LATEST   = f"{GITHUB_API_BASE}/latest"
 REQUEST_TIMEOUT = 10  # seconds
-STATE_FILE      = Path.home() / ".nyxora" / "update_state.json"
+STATE_FILE      = nyxora_home() / "update_state.json"
 
 
 class UpdateError(NyxoraError):

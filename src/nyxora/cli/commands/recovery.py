@@ -11,6 +11,7 @@ from nyxora.cli.ui import recovery_status_panel
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.memory_guard import wipe_memory
 from nyxora.core.recovery_core import RecoveryManager
+from nyxora.utils.paths import nyxora_home
 
 app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
 
@@ -222,7 +223,7 @@ def status() -> None:
     except Exception:
         totp_configured = False
 
-    nyxora_dir = Path.home() / ".nyxora"
+    nyxora_dir = nyxora_home()
     capsule_files = [p.name for p in nyxora_dir.rglob("*.capsule")] if nyxora_dir.exists() else []
     share_files = [p.name for p in nyxora_dir.rglob("share_*.bin")] if nyxora_dir.exists() else []
 

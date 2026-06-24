@@ -20,10 +20,11 @@ from nyxora.tui.screens._shared_bg import (
     NyxSep,
     NyxTopBar,
 )
+from nyxora.utils.paths import default_vault_path
 
 
 def _get_default_vault_path() -> Path:
-    return Path.home() / ".nyxora" / "vault.nyx"
+    return default_vault_path()
 
 
 def _read_kdf_salt(vault_path: Path) -> bytes | None:

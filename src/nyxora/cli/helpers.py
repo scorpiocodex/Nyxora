@@ -13,13 +13,14 @@ from nyxora.cli import ui
 from nyxora.core.crypto_engine import CryptoEngine
 from nyxora.core.vault_store import VaultStore
 from nyxora.utils.config import Config
+from nyxora.utils.paths import default_vault_path, nyxora_home
 
 SERVICE_NAME = "nyxora_vault_session"
 
 
-SESSION_FILE = Path.home() / ".nyxora" / "session.json"
-SESSION_KEY_FILE = Path.home() / ".nyxora" / "session.key"
-PROFILES_FILE = Path.home() / ".nyxora" / "profiles.json"
+SESSION_FILE = nyxora_home() / "session.json"
+SESSION_KEY_FILE = nyxora_home() / "session.key"
+PROFILES_FILE = nyxora_home() / "profiles.json"
 
 
 def _save_key_fallback(session_id: str, root_key_hex: str) -> None:
@@ -70,7 +71,7 @@ def get_vault_path(config: Config) -> Path:
     vp = config.get("vault.default_path")
     if vp:
         return Path(vp)
-    return Path.home() / ".nyxora" / "vault.nyx"  # pragma: no cover
+    return default_vault_path()  # pragma: no cover
 
 
 def save_session(session_id: str, vault_path: str, root_key_hex: str) -> None:

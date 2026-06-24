@@ -20,6 +20,7 @@ from nyxora.tui.screens._shared_bg import (
     NyxCornerInfo,
     NyxTopBar,
 )
+from nyxora.utils.paths import nyxora_home
 
 
 class BackupScreen(Static):
@@ -69,7 +70,7 @@ class BackupScreen(Static):
     # ── Data loading ─────────────────────────────────────────────
 
     def _backup_dir(self) -> Path:
-        return Path.home() / ".nyxora" / "backups"
+        return nyxora_home() / "backups"
 
     def _list_backups(self) -> List[Tuple[str, str, str]]:
         """

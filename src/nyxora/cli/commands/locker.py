@@ -11,10 +11,11 @@ from nyxora.cli import ui
 from nyxora.cli.helpers import load_session
 from nyxora.core.crypto_engine import CryptoEngine, EncryptedField
 from nyxora.core.memory_guard import wipe_memory
+from nyxora.utils.paths import nyxora_home
 
 app = typer.Typer(rich_markup_mode="rich", pretty_exceptions_enable=False)
 
-LOCKER_DIR = Path.home() / ".nyxora" / "locker"
+LOCKER_DIR = nyxora_home() / "locker"
 NYX_SUFFIX = ".nyx"
 
 _engine = CryptoEngine()
