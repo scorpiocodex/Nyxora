@@ -62,6 +62,8 @@ class ManageScreen(Static):
         Binding("a",      "add_entry",     "Add",    show=True),
         Binding("e",      "edit_entry",    "Edit",   show=True),
         Binding("c",      "copy_pw",       "Copy",   show=True),
+        Binding("u",      "copy_user",     "User",   show=True),
+        Binding("l",      "copy_url",      "URL",    show=True),
         Binding("t",      "show_totp",     "TOTP",   show=True),
         Binding("d",      "delete_entry",  "Delete", show=True),
         Binding("p",      "toggle_pw",     "Reveal", show=False),
@@ -113,9 +115,12 @@ class ManageScreen(Static):
                     )
                 with Horizontal(id="action-bar"):
                     # Start disabled: nothing is selected on mount. They enable
-                    # in _sync_action_buttons() once an entry is selected.
+                    # in _sync_action_buttons() once an entry is selected. The
+                    # copy actions are grouped first; DELETE stays last.
                     yield Button("COPY",   id="btn-copy",   classes="primary",
                                  disabled=True)
+                    yield Button("USER",   id="btn-copy-user", disabled=True)
+                    yield Button("URL",    id="btn-copy-url",  disabled=True)
                     yield Button("EDIT",   id="btn-edit",   disabled=True)
                     yield Button("TOTP",   id="btn-totp",   disabled=True)
                     yield Button("DELETE", id="btn-delete", classes="danger",
@@ -138,7 +143,10 @@ class ManageScreen(Static):
         """Enable the COPY/EDIT/TOTP/DELETE buttons only when an entry is
         selected; disable them (keeping the bar visible) otherwise."""
         disabled = self._selected is None
-        for bid in ("#btn-copy", "#btn-edit", "#btn-totp", "#btn-delete"):
+        for bid in (
+            "#btn-copy", "#btn-copy-user", "#btn-copy-url",
+            "#btn-edit", "#btn-totp", "#btn-delete",
+        ):
             try:
                 self.query_one(bid, Button).disabled = disabled
             except Exception:
@@ -437,10 +445,12 @@ class ManageScreen(Static):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         dispatch = {
-            "btn-copy":   self.action_copy_pw,
-            "btn-edit":   self.action_edit_entry,
-            "btn-totp":   self.action_show_totp,
-            "btn-delete": self.action_delete_entry,
+            "btn-copy":      self.action_copy_pw,
+            "btn-copy-user": self.action_copy_user,
+            "btn-copy-url":  self.action_copy_url,
+            "btn-edit":      self.action_edit_entry,
+            "btn-totp":      self.action_show_totp,
+            "btn-delete":    self.action_delete_entry,
         }
         handler = dispatch.get(event.button.id or "")
         if handler:
@@ -512,6 +522,45 @@ class ManageScreen(Static):
             pyperclip.copy("")
         except Exception:
             pass
+
+    def action_copy_user(self) -> None:
+        """Copy the selected entry's username to the clipboard (non-secret)."""
+        if not self._selected:
+            self.app.notify("Select an entry first.", timeout=2)
+            return
+        try:
+            import pyperclip
+            pyperclip.copy(self._selected.username or "")
+            # Non-secret field: NO 30s auto-clear (unlike action_copy_pw) — the
+            # user wants to paste this, so clearing it would be worse UX. The
+            # username is user-controlled, so it is NOT echoed into this
+            # Rich-markup notification (no injection surface); only the escaped
+            # exception text can reach markup below.
+            self.app.notify("Username copied.", title="◆ Copied", timeout=3)
+        except Exception as exc:
+            self.app.notify(
+                f"Copy failed: {escape(str(exc))}",
+                severity="error",
+                timeout=3,
+            )
+
+    def action_copy_url(self) -> None:
+        """Copy the selected entry's URL to the clipboard (non-secret)."""
+        if not self._selected:
+            self.app.notify("Select an entry first.", timeout=2)
+            return
+        try:
+            import pyperclip
+            pyperclip.copy(self._selected.url or "")
+            # See action_copy_user: non-secret → no auto-clear; the
+            # user-controlled url is not echoed into markup.
+            self.app.notify("URL copied.", title="◆ Copied", timeout=3)
+        except Exception as exc:
+            self.app.notify(
+                f"Copy failed: {escape(str(exc))}",
+                severity="error",
+                timeout=3,
+            )
 
     def action_show_totp(self) -> None:
         if not self._selected:
