@@ -167,9 +167,12 @@ class NyxCornerInfo(Static):
         lines: list[str],
         **kwargs: Any,
     ) -> None:
-        lbl  = f"[#1A2838]{label}[/#1A2838]\n"
+        # #344252: legible-dim (shared with #4's labels). Heading was #1A2838
+        # and data lines #0E1820 — both too dim on the #0B0D12 screen
+        # background; the whole readout is now uniformly #344252 (#6).
+        lbl  = f"[#344252]{label}[/#344252]\n"
         body = "\n".join(
-            f"[#0E1820]{line}[/#0E1820]" for line in lines
+            f"[#344252]{line}[/#344252]" for line in lines
         )
         super().__init__(lbl + body, **kwargs)
 
