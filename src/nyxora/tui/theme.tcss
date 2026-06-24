@@ -671,7 +671,7 @@ NyxBackground {
 NyxCornerInfo {
     width: auto;
     height: auto;
-    color: #0E1820;
+    color: #344252;
     background: transparent;
     padding: 0 1;
 }
