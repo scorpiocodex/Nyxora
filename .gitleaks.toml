@@ -1,0 +1,39 @@
+# Nyxora Gitleaks configuration
+#
+# Goal: catch any REAL credential/key/vault before it enters git history, while
+# ignoring the repo's synthetic test fixtures and a handful of documentation
+# false positives. The allowlist is deliberately PRECISE — it never blanket-
+# ignores src/, so a genuine secret in production code is still detected.
+#
+# A full-history scan (#11) found 7 generic-api-key hits, all benign:
+#   - 3 false positives on NAMES, not secrets: the cipher name
+#     "XChaCha20-Poly1305" in a docstring (crypto_engine.py) and a doc
+#     (ARCHITECTURE.md), and the class name "Ed25519PrivateKey" in a type
+#     annotation (generate.py). Allowlisted by exact token so src/ stays scanned.
+#   - 4 synthetic test secrets: the TOTP test vector "ABCDEF234567" in TUI tests
+#     and a "(set during testing)" TOTP seed in HANDOFF.md. Allowlisted by path.
+
+title = "Nyxora Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic test fixtures + documentation false positives. Real secrets are still detected."
+
+# Path allowlist: the test suite is full of synthetic secrets (TOTP vectors,
+# fake API keys, test-password derivations) by design; HANDOFF.md is a dev
+# handoff note containing a throwaway test TOTP seed.
+paths = [
+  '''(^|/)tests/''',
+  '''^HANDOFF\.md$''',
+]
+
+# Regex allowlist (matched against the detected secret, repo-wide): these are
+# fixed cipher/class NAMES that the generic-api-key rule misfires on, plus the
+# obvious synthetic TOTP test vector. None can collide with a real credential.
+regexes = [
+  '''XChaCha20-Poly1305''',
+  '''Ed25519PrivateKey''',
+  '''ABCDEF234567''',
+]
