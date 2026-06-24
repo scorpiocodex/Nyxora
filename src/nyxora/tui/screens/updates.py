@@ -50,8 +50,11 @@ class UpdatesScreen(Static):
         yield Static(" ◆  UPDATES", classes="screen-title")
         with Horizontal(id="version-compare"):
             with Vertical(classes="version-box"):
+                # No inline color: let .version-lbl { color: #344252 } apply so
+                # the label is legible (the old inline #1E2D3D was invisible
+                # against the #0D1016 box background).
                 yield Static(
-                    "[#1E2D3D]  INSTALLED[/#1E2D3D]",
+                    "  INSTALLED",
                     classes="version-lbl",
                 )
                 yield Static(
@@ -61,11 +64,15 @@ class UpdatesScreen(Static):
                 )
             with Vertical(classes="version-box"):
                 yield Static(
-                    "[#1E2D3D]  LATEST[/#1E2D3D]",
+                    "  LATEST",
                     classes="version-lbl",
                 )
+                # Explicit #344252 (legible-dim): .version-num's CSS color is the
+                # bright #E8D5A8, so removing the inline color would make the
+                # placeholder bright rather than understated. A check replaces
+                # this with the gold version number.
                 yield Static(
-                    "[#1E2D3D]  —[/#1E2D3D]",
+                    "[#344252]  —[/#344252]",
                     id="ver-latest",
                     classes="version-num",
                 )
