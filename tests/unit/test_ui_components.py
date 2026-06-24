@@ -60,3 +60,53 @@ def test_new_ui_components():
     with patch("pyperclip.copy", fake_copy):
         clipboard_countdown(seconds=0)
         assert cleared.wait(timeout=5)
+
+
+def test_table_entries_password_visibility(monkeypatch):
+    """The real contract for table_entries: the password column is rendered only
+    when show_passwords=True; the title always shows. Replaces the hollow
+    table_entries calls from the removed test_massive_coverage.py."""
+    import io
+
+    from rich.console import Console
+
+    import nyxora.cli.ui as ui
+    from nyxora.core.vault_store import EntryRecord
+
+    er = EntryRecord(
+        id="abcdef12", title="GitHubAcct", username="alice",
+        password="PWVISIBLE9", url="https://x.example", updated_at=0,
+    )
+
+    def render(show: bool) -> str:
+        buf = io.StringIO()
+        # Wide console so 7 columns never wrap and split the values we assert on.
+        wide = Console(file=buf, width=200, theme=ui.NYX_THEME, highlight=False)
+        monkeypatch.setattr(ui, "console", wide)
+        ui.table_entries([er], show_passwords=show)
+        return buf.getvalue()
+
+    shown = render(True)
+    assert "PWVISIBLE9" in shown   # password column present when requested
+    assert "GitHubAcct" in shown
+
+    hidden = render(False)
+    assert "PWVISIBLE9" not in hidden  # password withheld by default
+    assert "GitHubAcct" in hidden      # title always shown
+
+
+def test_table_entries_empty_renders_header(monkeypatch):
+    """An empty entry list still renders the table header, not a crash."""
+    import io
+
+    from rich.console import Console
+
+    import nyxora.cli.ui as ui
+
+    buf = io.StringIO()
+    monkeypatch.setattr(
+        ui, "console",
+        Console(file=buf, width=200, theme=ui.NYX_THEME, highlight=False),
+    )
+    ui.table_entries([])
+    assert "Vault Entries" in buf.getvalue()
