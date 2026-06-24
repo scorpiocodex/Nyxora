@@ -69,3 +69,6 @@ assets/nyxora_icon.png
 assets/nyxora_icon.ico
 dist/
 build/
+
+# Internal dev session-handoff doc — not for the public repo
+HANDOFF.md
