@@ -212,36 +212,48 @@ class VaultStore:
         conn = self._connect(path)
         self._conn = conn
 
-        # ── Schema migration v1 → v2 (adds totp_secret_enc column) ──────────
-        _ver_row = conn.execute(
-            "SELECT value FROM metadata WHERE key='schema_version'"
-        ).fetchone()
-        _stored_ver = _ver_row["value"] if _ver_row else "1"
-        if _stored_ver != SCHEMA_VERSION:
-            # Add column if missing (safe on any SQLite version)
-            _existing_cols = [
-                r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
-            ]
-            if "totp_secret_enc" not in _existing_cols:
+        try:
+            # ── Schema migration v1 → v2 (adds totp_secret_enc column) ──────
+            _ver_row = conn.execute(
+                "SELECT value FROM metadata WHERE key='schema_version'"
+            ).fetchone()
+            _stored_ver = _ver_row["value"] if _ver_row else "1"
+            if _stored_ver != SCHEMA_VERSION:
+                # Add column if missing (safe on any SQLite version)
+                _existing_cols = [
+                    r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
+                ]
+                if "totp_secret_enc" not in _existing_cols:
+                    with conn:
+                        conn.execute(
+                            "ALTER TABLE entries ADD COLUMN totp_secret_enc BLOB"
+                        )
+                # Update stored version
                 with conn:
                     conn.execute(
-                        "ALTER TABLE entries ADD COLUMN totp_secret_enc BLOB"
+                        "UPDATE metadata SET value=? WHERE key='schema_version'",
+                        (SCHEMA_VERSION,),
                     )
-            # Update stored version
-            with conn:
-                conn.execute(
-                    "UPDATE metadata SET value=? WHERE key='schema_version'",
-                    (SCHEMA_VERSION,),
-                )
-            # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
-            self._write_schema_fingerprint(conn)
-        # ── End migration ─────────────────────────────────────────────────────
+                # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
+                self._write_schema_fingerprint(conn)
+            # ── End migration ──────────────────────────────────────────────
 
-        # Verify schema fingerprint first
-        self._verify_schema_fingerprint(conn)
+            # Verify schema fingerprint first
+            self._verify_schema_fingerprint(conn)
 
-        # Verify vault-wide HMAC
-        self._verify_vault_hmac(conn)
+            # Verify vault-wide HMAC
+            self._verify_vault_hmac(conn)
+        except BaseException:
+            # Integrity verification (or migration) failed on a corrupt or
+            # tampered vault: close the connection we just opened so it is not
+            # leaked. The rejection still propagates unchanged — we only add
+            # cleanup. Close the raw handle (no WAL checkpoint) so nothing is
+            # written back to a vault that just failed verification.
+            try:
+                conn.close()
+            finally:
+                self._conn = None
+            raise
 
         self._cache = {}
         self._cache_complete = False
