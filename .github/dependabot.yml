@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Keep the SHA-pinned GitHub Actions current. Pinning to immutable SHAs blocks
+  # tag-repointing supply-chain attacks but freezes security updates, so
+  # Dependabot opens PRs to bump the pins (and their version comments) as actions
+  # release updates.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
