@@ -59,23 +59,32 @@ def test_panic_lock_active():
 def test_lockout_ladder():
     sm = SessionManager()
 
-    # Fail 3 times -> 5 sec lockout according to ladder
-    sm.record_failed_attempt()
-    sm.record_failed_attempt()
-    sm.record_failed_attempt()
+    # Freeze the clock across record -> remaining -> unlock so the
+    # get_lockout_remaining() read and the _check_lockout() read inside unlock()
+    # see ONE instant. With a live clock the two wall-clock reads can straddle an
+    # integer-second boundary and int()-truncate to different values — a
+    # test-side flake on coarse-timer platforms (windows time.time() ~15.6ms).
+    # The lockout logic itself is unaffected: enforcement uses the float
+    # `remaining > 0`, and the int() in the error is display-only.
+    now = time.time()
+    with patch("nyxora.core.session_core.time.time", return_value=now):
+        # Fail 3 times -> 5 sec lockout according to the ladder
+        sm.record_failed_attempt()
+        sm.record_failed_attempt()
+        sm.record_failed_attempt()
 
-    assert sm.get_failed_attempts() == 3
-    remaining = sm.get_lockout_remaining()
-    assert remaining > 0
+        assert sm.get_failed_attempts() == 3
+        remaining = sm.get_lockout_remaining()
+        assert remaining == 5.0  # frozen clock: exactly the ladder value
 
-    # Unlocking during lockout should fail
-    with pytest.raises(BruteForceLockedError) as exc:
-        sm.unlock(bytearray(b"test"))
+        # Unlocking during lockout should fail with the ladder's lockout seconds
+        with pytest.raises(BruteForceLockedError) as exc:
+            sm.unlock(bytearray(b"test"))
 
-    assert exc.value.lockout_seconds == int(remaining)
+        assert exc.value.lockout_seconds == 5  # the 3-fail ladder rung, not a clock sample
 
     # Simulate time passing by returning a fixed time 15 seconds in the future
-    future_time = time.time() + 15
+    future_time = now + 15
     with patch("nyxora.core.session_core.time.time", return_value=future_time):
         # Now 15 seconds later, lockout should be over
         assert sm.get_lockout_remaining() == 0.0

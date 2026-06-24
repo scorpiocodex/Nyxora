@@ -32,6 +32,21 @@ def test_main_cli_exception_handling():
     with pytest.raises(typer.Exit):
         version_callback(True)
 
+
+def test_main_cli_generic_exception_exits_1():
+    """A non-NyxoraError bubbling out of app() flows through the generic
+    handler: an error panel is shown and the process exits with code 1
+    (distinct from the NyxoraError path, which uses the error's own code)."""
+    import os
+
+    with patch("nyxora.cli.main.app", side_effect=RuntimeError("boom")), \
+         patch.dict(os.environ, {"NYX_DEBUG": "1"}), \
+         patch("nyxora.cli.ui.error_panel") as m_panel:
+        with pytest.raises(SystemExit) as exc_info:
+            cli_main()
+    assert exc_info.value.code == 1
+    m_panel.assert_called_once()
+
 @patch("nyxora.cli.commands.vault.load_session")
 @patch("nyxora.cli.commands.vault.ui")
 def test_vault_commands_extra(m_ui, m_load, tmp_path):
