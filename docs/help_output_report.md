@@ -1,5 +1,5 @@
 # Nyxora CLI Help Output Report
-## v2.0.0 — regenerated 2026-05-03
+## v3.0.1 — regenerated 2026-06-26
 
 ## nyx --help (✅ PASS)
 ```console
@@ -15,10 +15,11 @@ $ nyx --help
 
  NYXORA — Next-Generation Password Intelligence Vault.
 
- Offline • Zero-Knowledge • Terminal-Native • Quantum-Resilient
+ Offline • Zero-Knowledge • Terminal-Native
 
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
 │ --version             -v        Show version and exit.                      │
+│ --json                          Output results as JSON (for scripting).     │
 │ --install-completion            Install completion for the current shell.   │
 │ --show-completion               Show completion for the current shell, to   │
 │                                 copy it or customize the installation.      │
@@ -45,6 +46,15 @@ $ nyx --help
 ┌─ 📁 File Locker ────────────────────────────────────────────────────────────┐
 │ locker    File encryption: encrypt/decrypt arbitrary files.                 │
 └─────────────────────────────────────────────────────────────────────────────┘
+┌─ 🔄 Updates ────────────────────────────────────────────────────────────────┐
+│ update    Manage updates: check, install, rollback.                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─ ⚙️  Scripting & Integration ───────────────────────────────────────────────┐
+│ script    Scripting tools: pipe, run, fzf integration.                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─ 🖥️  Interactive ───────────────────────────────────────────────────────────┐
+│ tui       Interactive vault browser — Obsidian Tactical TUI.                │
+└─────────────────────────────────────────────────────────────────────────────┘
 
  Execute nyx <command> --help for encrypted module instructions.
 ```
@@ -70,6 +80,10 @@ $ nyx vault --help
 │ panic            PANIC — immediately wipe session and exit.                 │
 │ status           Show vault lock state and entry count.                     │
 │ health-check     Run a full integrity verification of the vault.            │
+│ profiles         List all vault profiles.                                   │
+│ use              Switch to a named vault profile.                           │
+│ add-profile      Register a new vault profile.                              │
+│ remove-profile   Remove a vault profile (does not delete the vault file).   │
 │ import           Import entries from CSV, JSON, Bitwarden, or 1Password     │
 │                  export.                                                    │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -117,6 +131,7 @@ $ nyx secret --help
 │ update  Update fields on an existing entry.                                 │
 │ delete  Delete (soft) an entry from the vault.                              │
 │ search  Search entries by title, username, URL, or tags.                    │
+│ totp    Show the live TOTP code for an entry.                               │
 │ clone   Clone an entry with a new title and ID.                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -135,12 +150,14 @@ $ nyx secret update --help
 │ *    entry_id      TEXT  Entry ID [required]                                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --title     -t      TEXT                                                    │
-│ --username  -u      TEXT                                                    │
-│ --url               TEXT                                                    │
-│ --notes             TEXT                                                    │
-│ --tags              TEXT  Comma-separated tags (replaces existing)          │
-│ --help                    Show this message and exit.                       │
+│ --title        -t      TEXT                                                 │
+│ --username     -u      TEXT                                                 │
+│ --url                  TEXT                                                 │
+│ --notes                TEXT                                                 │
+│ --tags                 TEXT  Comma-separated tags (replaces existing)       │
+│ --totp-secret          TEXT  TOTP base32 secret to store with this entry    │
+│                              ('' to clear)                                  │
+│ --help                       Show this message and exit.                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -231,6 +248,8 @@ $ nyx security --help
 │ forensic     Run a full forensic integrity check and display detailed       │
 │              results.                                                       │
 │ breach-scan  Check all vault passwords against HaveIBeenPwned.              │
+│ due          List entries whose password hasn't changed in N days.          │
+│ health       Show vault security health score and breakdown.                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -298,5 +317,62 @@ $ nyx locker --help
 │ decrypt  Decrypt a .nyx file with the vault key.                            │
 │ list     List encrypted .nyx files in the locker directory.                 │
 │ shred    Securely shred a file with 3-pass overwrite.                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## nyx update --help (✅ PASS)
+```console
+$ nyx update --help
+
+ Usage: nyx update [OPTIONS] COMMAND [ARGS]...
+
+ Manage updates: check, install, rollback.
+
+┌─ Options ───────────────────────────────────────────────────────────────────┐
+│ --help          Show this message and exit.                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─ Commands ──────────────────────────────────────────────────────────────────┐
+│ check     Check for available Nyxora updates.                               │
+│ install   Download and install the latest Nyxora release.                   │
+│ rollback  Roll back to the previous Nyxora version.                         │
+│ channel   Set the update channel (stable or pre-release).                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## nyx script --help (✅ PASS)
+```console
+$ nyx script --help
+
+ Usage: nyx script [OPTIONS] COMMAND [ARGS]...
+
+ Scripting tools: pipe, run, fzf integration.
+
+┌─ Options ───────────────────────────────────────────────────────────────────┐
+│ --help          Show this message and exit.                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─ Commands ──────────────────────────────────────────────────────────────────┐
+│ pipe  Pipe a vault field into a command's stdin.                            │
+│ run   Run a command with vault credentials injected as environment          │
+│       variables.                                                            │
+│ fzf   Open an fzf fuzzy-finder over vault entries.                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## nyx tui --help (✅ PASS)
+```console
+$ nyx tui --help
+
+ Usage: nyx tui [OPTIONS] COMMAND [ARGS]...
+
+ Interactive vault browser — Obsidian Tactical TUI.
+
+┌─ Options ───────────────────────────────────────────────────────────────────┐
+│ --help          Show this message and exit.                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
