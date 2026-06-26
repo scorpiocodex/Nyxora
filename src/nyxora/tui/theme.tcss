@@ -751,6 +751,18 @@ NyxSep {
     height: auto;
 }
 
+/* The Generate mode panels stack fixed-height inputs/buttons. Without an
+   explicit height they inherit Vertical's default height: 1fr, which balloons
+   on tall windows and — worse — collapses on short ones so the children
+   overflow and paint over the readouts below while the misreported size keeps
+   #workspace's overflow-y: auto from ever scrolling. height: auto makes the
+   panel report its true height so tall windows top-pack and short windows
+   scroll. */
+#panel-password,
+#panel-passphrase {
+    height: auto;
+}
+
 /* An Input sharing a card row with a button (the add/edit password +
    GENERATE row) must flex, not consume the whole row: Input default width is
    100%, which pushed the auto-width GENERATE button past the card's right

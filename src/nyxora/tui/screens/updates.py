@@ -76,7 +76,10 @@ class UpdatesScreen(Static):
                     id="ver-latest",
                     classes="version-num",
                 )
-        with Horizontal():
+        # card-btns -> height: auto; without it this Horizontal inherits the
+        # default height: 1fr and balloons into a large empty mid-screen band
+        # between the buttons and the result/footer on any tall window.
+        with Horizontal(classes="card-btns"):
             yield Button("  CHECK FOR UPDATES", id="btn-check",
                          classes="primary")
             yield Button("  INSTALL", id="btn-install", classes="success")
