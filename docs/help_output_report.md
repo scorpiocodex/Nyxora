@@ -13,7 +13,7 @@ $ nyx --help
  ╚████║   ██║   ██╔╝ ██╗╚██████╔╝██║  ██║██║  ██║ ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝
  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
 
- NYXORA — Next-Generation Password Intelligence Vault.
+ NYXORA — An offline, zero-knowledge, terminal-native password manager.
 
  Offline • Zero-Knowledge • Terminal-Native
 

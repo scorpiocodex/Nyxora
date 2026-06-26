@@ -35,7 +35,7 @@ app = typer.Typer(
 [bold #8B00FF]██║ ╚████║   ██║   ██╔╝ ██╗╚██████╔╝██║  ██║██║  ██║[/]
 [bold #8B00FF]╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝[/]
 
-[bold #00FFFF]NYXORA[/] — Next-Generation Password Intelligence Vault.
+[bold #00FFFF]NYXORA[/] — An offline, zero-knowledge, terminal-native password manager.
 
 [#00FF41]Offline[/] • [#8B00FF]Zero-Knowledge[/] • [#00FFFF]Terminal-Native[/]
 """,
