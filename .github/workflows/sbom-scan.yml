@@ -1,0 +1,92 @@
+name: SBOM & Dependency Scan
+
+# Supply-chain visibility + dependency-CVE gate (Sentinel #13). Generates a
+# CycloneDX SBOM of the RESOLVED Python dependency tree (installed packages only)
+# and scans it with grype, failing on CRITICAL + HIGH (see .grype.yaml).
+#
+# The Python interpreter itself is deliberately out of scope: it is the runtime
+# platform, exercised by the CI test matrix (3.12 / 3.13 / 3.14), not a
+# dependency Nyxora ships. Scoping the SBOM to site-packages keeps the gate about
+# the supply chain, not the runner's Python patch level.
+#
+# Uses direct, checksum-verified syft + grype binaries (license-free; not the
+# anchore actions) with SHA-pinned setup actions.
+#
+# This job is intentionally NOT yet a required check — it is made required via
+# branch protection after merge, once it has run clean on main.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  SYFT_VERSION: "1.45.1"
+  SYFT_SHA256: "20c84195e24927f50a3b2269946be51f4c4abc9d2f145fee7388b4199149f716"
+  GRYPE_VERSION: "0.114.0"
+  GRYPE_SHA256: "edda0968d8827daab01d32b3cd7de192ae0915005e7bbfcfef9e68e79bc43343"
+
+jobs:
+  sbom-scan:
+    name: SBOM & Dependency CVE Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Nyxora into a clean venv (resolved dependency tree)
+        run: |
+          set -euo pipefail
+          python -m venv .sbomenv
+          .sbomenv/bin/python -m pip install --upgrade pip
+          .sbomenv/bin/pip install .
+          # site-packages of the resolved env — the package tree only, no interpreter
+          site_packages="$(.sbomenv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
+          version="$(.sbomenv/bin/python -c 'import importlib.metadata as m; print(m.version("nyxora"))')"
+          echo "SITE_PACKAGES=$site_packages" >> "$GITHUB_ENV"
+          echo "NYXORA_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Install syft + grype (pinned + checksum-verified)
+        run: |
+          set -euo pipefail
+          syft_tar="syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          curl -sSL -o "$syft_tar" "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/${syft_tar}"
+          echo "${SYFT_SHA256}  ${syft_tar}" | sha256sum -c -
+          tar -xzf "$syft_tar" syft
+          chmod +x syft
+          ./syft version
+
+          grype_tar="grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
+          curl -sSL -o "$grype_tar" "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/${grype_tar}"
+          echo "${GRYPE_SHA256}  ${grype_tar}" | sha256sum -c -
+          tar -xzf "$grype_tar" grype
+          chmod +x grype
+          ./grype version
+
+      - name: Generate CycloneDX SBOM (resolved package tree)
+        run: |
+          set -euo pipefail
+          ./syft scan "dir:${SITE_PACKAGES}" \
+            --source-name nyxora \
+            --source-version "${NYXORA_VERSION}" \
+            -o cyclonedx-json=sbom-ci.cdx.json
+
+      - name: Scan SBOM for CVEs (fail on CRITICAL + HIGH)
+        run: |
+          set -euo pipefail
+          ./grype sbom:sbom-ci.cdx.json --config .grype.yaml
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: nyxora-sbom-cyclonedx
+          path: sbom-ci.cdx.json
