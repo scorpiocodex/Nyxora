@@ -97,6 +97,11 @@ class GenerateScreen(Static):
         with Horizontal(classes="card-btns"):
             yield Button("  COPY", id="btn-copy-gen", classes="primary")
 
+        # Deliberate empty 1fr spacer: absorbs vertical slack so the bottom
+        # corner readouts + bar pin to the screen bottom (the framed look).
+        # Holds no content, so it cannot collapse/overlap; on short viewports it
+        # shrinks to 0 and the workspace scrolls instead.
+        yield Static("", classes="flex-spacer")
         with Horizontal(classes="nyx-corners-bot"):
             yield NyxCornerInfo("ALGORITHM", ["UNIFORM RANDOM", "NO BIAS"])
             yield Static("", classes="corner-spacer")

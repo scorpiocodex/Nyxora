@@ -22,6 +22,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Button, ContentSwitcher, Input, Static
 
+from nyxora.tui.screens._shared_bg import NyxBottomBar
 from nyxora.tui.screens.generate import GenerateScreen
 from nyxora.tui.screens.updates import UpdatesScreen
 
@@ -73,6 +74,38 @@ def test_updates_button_row_not_ballooned() -> None:
     asyncio.run(scenario())
 
 
+def test_bottom_chrome_pinned_to_bottom_on_tall_viewport() -> None:
+    """On a tall viewport the deliberate flex-spacer absorbs the slack so the
+    bottom bar sits at the workspace bottom (not floating mid-screen)."""
+    async def check(harness_cls, screen_id) -> None:
+        app = harness_cls()
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            ws = app.query_one("#workspace", ContentSwitcher)
+            scr = app.query_one(f"#{screen_id}")
+            spacer = scr.query_one(".flex-spacer", Static)
+            bottom_bar = scr.query_one(NyxBottomBar)
+
+            # The spacer takes the slack (1fr) ...
+            assert spacer.region.height >= 1, (
+                f"{screen_id}: flex-spacer did not absorb slack on a tall "
+                f"viewport (height {spacer.region.height})"
+            )
+            # ... so the bottom bar's bottom edge meets the workspace bottom.
+            ws_bottom = ws.content_region.y + ws.content_region.height
+            bar_bottom = bottom_bar.region.y + bottom_bar.region.height
+            assert bar_bottom == ws_bottom, (
+                f"{screen_id}: bottom bar ends at row {bar_bottom}, not pinned "
+                f"to workspace bottom {ws_bottom}"
+            )
+
+    async def scenario() -> None:
+        await check(_UpdatesHarness, "screen-updates")
+        await check(_GenerateHarness, "screen-generate")
+
+    asyncio.run(scenario())
+
+
 def test_generate_passphrase_short_viewport_no_overlap_and_scrolls() -> None:
     """On a short terminal the passphrase panel must report honest height:
     no child overlap, and the workspace must actually scroll."""
@@ -106,6 +139,15 @@ def test_generate_passphrase_short_viewport_no_overlap_and_scrolls() -> None:
                 f"workspace did not scroll: virtual={ws.virtual_size.height} "
                 f"<= viewport content={ws.content_region.height} (1fr-collapse "
                 f"hid the overflow)"
+            )
+
+            # With no slack to give, the deliberate spacer collapses to its
+            # minimum (<=1 row) rather than ballooning — it must not steal rows
+            # from the (already overflowing) real content or block the scroll.
+            spacer = scr.query_one(".flex-spacer", Static)
+            assert spacer.region.height <= 1, (
+                f"flex-spacer did not collapse on a short viewport "
+                f"(height {spacer.region.height})"
             )
 
     asyncio.run(scenario())
