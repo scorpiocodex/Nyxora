@@ -76,7 +76,10 @@ class UpdatesScreen(Static):
                     id="ver-latest",
                     classes="version-num",
                 )
-        with Horizontal():
+        # card-btns -> height: auto; without it this Horizontal inherits the
+        # default height: 1fr and balloons into a large empty mid-screen band
+        # between the buttons and the result/footer on any tall window.
+        with Horizontal(classes="card-btns"):
             yield Button("  CHECK FOR UPDATES", id="btn-check",
                          classes="primary")
             yield Button("  INSTALL", id="btn-install", classes="success")
@@ -87,6 +90,11 @@ class UpdatesScreen(Static):
             "  [dim]For rollback: nyx update rollback[/dim]\n",
             id="update-footer",
         )
+        # Deliberate empty 1fr spacer: absorbs vertical slack so the bottom
+        # corner readouts + bar pin to the screen bottom (the framed look).
+        # Holds no content, so it cannot collapse/overlap; on short viewports it
+        # shrinks to 0 and the workspace scrolls instead.
+        yield Static("", classes="flex-spacer")
         with Horizontal(classes="nyx-corners-bot"):
             yield NyxCornerInfo("UPDATE", ["WHEEL + SHA256", "PIP INSTALL"])
             yield Static("", classes="corner-spacer")

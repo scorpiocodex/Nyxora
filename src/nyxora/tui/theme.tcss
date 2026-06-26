@@ -751,6 +751,29 @@ NyxSep {
     height: auto;
 }
 
+/* The Generate mode panels stack fixed-height inputs/buttons. Without an
+   explicit height they inherit Vertical's default height: 1fr, which balloons
+   on tall windows and — worse — collapses on short ones so the children
+   overflow and paint over the readouts below while the misreported size keeps
+   #workspace's overflow-y: auto from ever scrolling. height: auto makes the
+   panel report its true height so tall windows top-pack and short windows
+   scroll. */
+#panel-password,
+#panel-passphrase {
+    height: auto;
+}
+
+/* A single deliberate flexible spacer per screen, placed just before the bottom
+   corner readouts. It absorbs leftover vertical slack so the bottom chrome pins
+   to the screen bottom (the framed look) now that the structural containers are
+   height: auto. Unlike those, this holds no content, so it simply shrinks to 0
+   on short viewports — letting #workspace's overflow-y: auto scroll instead. */
+.flex-spacer {
+    height: 1fr;
+    width: 100%;
+    background: transparent;
+}
+
 /* An Input sharing a card row with a button (the add/edit password +
    GENERATE row) must flex, not consume the whole row: Input default width is
    100%, which pushed the auto-width GENERATE button past the card's right

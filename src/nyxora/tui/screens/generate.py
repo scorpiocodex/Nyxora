@@ -57,8 +57,9 @@ class GenerateScreen(Static):
             )
         yield Static(" ◆  GENERATE", classes="screen-title")
 
-        # Mode selector
-        with Horizontal():
+        # Mode selector (card-btns -> height: auto; otherwise this Horizontal
+        # inherits the default height: 1fr and balloons on tall windows).
+        with Horizontal(classes="card-btns"):
             yield Button("p  PASSWORD",   id="btn-mode-pw",  classes="primary")
             yield Button("w  PASSPHRASE", id="btn-mode-pp")
 
@@ -91,9 +92,16 @@ class GenerateScreen(Static):
         # ── Shared result area ───────────────────────────
         yield Static("", id="gen-result")
         yield Static("", id="gen-strength")
-        with Horizontal():
+        # card-btns -> height: auto (otherwise this Horizontal inherits 1fr and
+        # balloons / collapses with the rest of the column).
+        with Horizontal(classes="card-btns"):
             yield Button("  COPY", id="btn-copy-gen", classes="primary")
 
+        # Deliberate empty 1fr spacer: absorbs vertical slack so the bottom
+        # corner readouts + bar pin to the screen bottom (the framed look).
+        # Holds no content, so it cannot collapse/overlap; on short viewports it
+        # shrinks to 0 and the workspace scrolls instead.
+        yield Static("", classes="flex-spacer")
         with Horizontal(classes="nyx-corners-bot"):
             yield NyxCornerInfo("ALGORITHM", ["UNIFORM RANDOM", "NO BIAS"])
             yield Static("", classes="corner-spacer")
@@ -209,7 +217,7 @@ class GenerateScreen(Static):
             # The generated value may contain [ ] = which Textual would
             # parse as markup and raise MarkupError at render time.
             self.query_one("#gen-result", Static).update(
-                f"\n  [bold #C89A30]{escape(value)}[/bold #C89A30]\n"
+                f"  [bold #C89A30]{escape(value)}[/bold #C89A30]"
             )
             self.query_one("#gen-strength", Static).update(
                 f"  {_strength_label(value)}\n"
