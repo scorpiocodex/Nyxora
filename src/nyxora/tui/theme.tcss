@@ -514,7 +514,7 @@ DataTable > .datatable--even-row {
 .version-box {
     background: #0D1016;
     border: tall #1A2430;
-    height: 5;
+    height: 6;
     padding: 1;
     width: 1fr;
     margin-right: 2;
