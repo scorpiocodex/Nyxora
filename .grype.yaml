@@ -1,0 +1,18 @@
+# grype configuration — dependency-CVE gate for Nyxora (Sentinel #13).
+#
+# Scope: the RESOLVED Python package dependency tree (the SBOM is generated from
+# installed packages only — see sbom/nyxora-sbom.cdx.json). The Python
+# interpreter itself is the runtime platform, exercised by the CI test matrix
+# (3.12 / 3.13 / 3.14), not a dependency Nyxora ships, so it is intentionally out
+# of scope here.
+
+# Block the build on CRITICAL and HIGH severity findings. MEDIUM / LOW / NEGLIGIBLE
+# are reported (advisory) but do not fail the gate.
+fail-on-severity: "high"
+
+# Documented exceptions. Each entry MUST carry a written justification comment
+# (CVE, reason it is not exploitable / not remediable, and a review date) — an
+# exception is a deliberate, auditable decision, never a convenience to make CI
+# green. The first full scan of the resolved package tree was clean (0 findings),
+# so there are no exceptions.
+ignore: []
