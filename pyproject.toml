@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nyxora"
-version = "3.0.1"
+version = "3.1.0"
 description = "An offline, zero-knowledge, terminal-native password manager."
 readme = "README.md"
 authors = [

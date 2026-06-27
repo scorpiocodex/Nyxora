@@ -1,5 +1,5 @@
 # Nyxora CLI Help Output Report
-## v3.0.1 — regenerated 2026-06-26
+## v3.1.0 — regenerated 2026-06-28
 
 ## nyx --help (✅ PASS)
 ```console
