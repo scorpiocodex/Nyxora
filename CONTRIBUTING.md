@@ -35,7 +35,8 @@ welcome but subject to strict security and style review.
     pip install -e ".[dev]"
     pytest tests/ -v --timeout=60
 
-Coverage must remain above 80% (currently ~94%).
+Coverage must remain above 80% (currently ~81%; the interactive TUI is
+excluded from coverage and validated by manual real-terminal checks).
 
 ## Submitting Changes
 
