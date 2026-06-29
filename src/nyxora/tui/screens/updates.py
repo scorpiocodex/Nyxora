@@ -46,7 +46,7 @@ class UpdatesScreen(Static):
         with Horizontal(classes="nyx-corners-top"):
             yield NyxCornerInfo("CHANNEL", ["STABLE", "PYPI", "GITHUB RELEASES"])
             yield Static("", classes="corner-spacer")
-            yield NyxCornerInfo("INSTALLED", [f"v{__version__}", "NEXUS"])
+            yield NyxCornerInfo("INSTALLED", [f"v{__version__}", "SENTINEL"])
         yield Static(" ◆  UPDATES", classes="screen-title")
         with Horizontal(id="version-compare"):
             with Vertical(classes="version-box"):
