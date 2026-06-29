@@ -175,7 +175,7 @@ class UnlockScreen(Screen[bool]):
                         id="unlock-subtitle",
                     )
                     yield Static(
-                        f"[#1A2838]v{__version__} · NEXUS[/#1A2838]",
+                        f"[#1A2838]v{__version__} · SENTINEL[/#1A2838]",
                         id="unlock-ver",
                     )
                     yield NyxSep()
@@ -206,7 +206,7 @@ class UnlockScreen(Screen[bool]):
                 yield Static("", classes="corner-spacer")
                 yield NyxCornerInfo(
                     "BUILD INFO",
-                    [f"NYXORA v{__version__}", "NEXUS RELEASE", "SCORPIOCODEX"],
+                    [f"NYXORA v{__version__}", "SENTINEL RELEASE", "SCORPIOCODEX"],
                 )
 
             yield NyxBottomBar()
@@ -381,7 +381,7 @@ class CreateVaultScreen(Screen[bool]):
                 yield Static("", classes="corner-spacer")
                 yield NyxCornerInfo(
                     "BUILD",
-                    [f"v{__version__}", "NEXUS"],
+                    [f"v{__version__}", "SENTINEL"],
                 )
 
             yield NyxBottomBar()
