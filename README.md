@@ -100,6 +100,7 @@ nyx vault status            # show vault status
 nyx vault change-password   # change master password
 nyx vault panic             # emergency wipe — destroys session immediately
 nyx vault profiles          # manage multiple vaults
+nyx vault import            # import from CSV, JSON, Bitwarden, or 1Password
 ```
 
 ### Secrets

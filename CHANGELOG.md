@@ -5,6 +5,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.1.0] "Sentinel" - 2026-06-29
+
+### Fixed
+- **Updates version boxes no longer clip** — the gold INSTALLED / LATEST
+  version numbers render in full; the version box was one row too short and
+  cut them off
+- **Generate & Updates vertical density** — reworked layout so these screens
+  fill cleanly with no mid-screen gap and no floating footer, and scroll
+  correctly at short terminal heights
+- **Manage action-button states** — COPY / USER / etc. dim when no entry is
+  selected and brighten when one is active
+- **Checkbox rows no longer collapse** to empty boxes on narrow/short windows
+- **Vault-store connection leak** — fixed a database connection left open on
+  integrity-verification failure
+- Corner-readout and bottom-chrome contrast/framing tuned for legibility
+
+### Added
+- **`NYXORA_HOME` environment variable** — controls vault location and
+  isolates test runs from a developer's real vault
+
+### Changed
+- **Honest test suite** — replaced two coverage-padding test modules with
+  genuine behavioral tests; coverage now reflects real exercised behavior
+  (~81%, interactive TUI excluded)
+- Standardized the CLI banner and command descriptors
+- Regenerated the CLI `--help` reference snapshot
+
+### Removed
+- **Legacy v2 TUI screens** (vault browser, audit, search overlay) and their
+  PyInstaller build-spec references
+
+### CI / Security
+- **Secret scanning** (gitleaks, full-history, checksum-pinned) — now a
+  required check
+- **SBOM (CycloneDX) + dependency CVE scanning** (syft + grype, fail on
+  CRITICAL/HIGH) — now a required check
+- **Restored ruff lint and mypy type-check gates to blocking**
+- **Hardened release automation** — Actions pinned to commit SHAs, scoped
+  OIDC trusted publishing, Dependabot enabled
+- Branch protection now enforces 8 required status checks (3.12/3.13/3.14 ×
+  Linux/Windows, plus the two security gates)
+
+---
+
 ## [3.0.1] - 2026-06-18
 
 ### Fixed
