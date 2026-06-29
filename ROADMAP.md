@@ -25,7 +25,7 @@ everything else is designed to keep existing vaults openable.
 
 ## Released
 
-### v3.1.0 "Sentinel" — 2026-06-28
+### v3.1.0 "Sentinel" — 2026-06-29
 Quality-, CI-, and supply-chain-hardening release. Restored ruff/mypy gates to
 blocking; removed the legacy v2 TUI screens and their build-spec references;
 fixed the vault-store connection leak; added `NYXORA_HOME` for test isolation;
@@ -63,9 +63,12 @@ Security:
 
 ### v3.3.0 "Janus" — Import / export & interoperability (minor)
 Makes Nyxora adoptable by users migrating from other tools.
-- Importers for KeePass (.kdbx), Bitwarden, 1Password, and generic CSV.
+- Importer for KeePass (.kdbx) — the one major format not yet supported.
 - A first-class encrypted export format for Nyxora-to-Nyxora transfer.
 - Field mapping and de-duplication on import.
+
+CSV, JSON, Bitwarden, and 1Password import already ship today via
+`nyx vault import` (since 2.0.0).
 
 ### v3.4.0 "Argus" — Organization & visibility (minor)
 Helps users manage and understand large vaults.
