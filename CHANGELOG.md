@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.1.0] "Sentinel" - 2026-06-28
+## [3.1.0] "Sentinel" - 2026-06-29
 
 ### Fixed
 - **Updates version boxes no longer clip** — the gold INSTALLED / LATEST
