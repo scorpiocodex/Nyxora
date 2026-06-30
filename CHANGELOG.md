@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **TUI release codename** — the unlock footer, BUILD INFO panels, and the
+  updates-screen corner showed the stale 3.0.0 codename "NEXUS"; they now
+  read "SENTINEL". Version numbers were already correct. (#49)
+
+---
+
 ## [3.1.0] "Sentinel" - 2026-06-29
 
 ### Fixed
