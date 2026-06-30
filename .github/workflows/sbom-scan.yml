@@ -12,8 +12,8 @@ name: SBOM & Dependency Scan
 # Uses direct, checksum-verified syft + grype binaries (license-free; not the
 # anchore actions) with SHA-pinned setup actions.
 #
-# This job is intentionally NOT yet a required check — it is made required via
-# branch protection after merge, once it has run clean on main.
+# This job is a required check on main (enforced via branch protection): a
+# CRITICAL/HIGH dependency CVE blocks the merge.
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
     name: SBOM & Dependency CVE Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0

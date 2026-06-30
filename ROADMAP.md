@@ -25,6 +25,23 @@ everything else is designed to keep existing vaults openable.
 
 ## Released
 
+### v3.1.0 "Sentinel" — 2026-06-29
+Quality-, CI-, and supply-chain-hardening release. Restored ruff/mypy gates to
+blocking; removed the legacy v2 TUI screens and their build-spec references;
+fixed the vault-store connection leak; added `NYXORA_HOME` for test isolation;
+replaced coverage-padding tests with honest behavioral tests. Added a
+supply-chain security layer to CI — gitleaks secret scanning and an SBOM +
+grype dependency-CVE gate, both required checks — with SHA-pinned actions and
+scoped-OIDC trusted publishing. UI polish: fixed the Updates version-box clip
+and the Generate/Updates density/footer layout. No vault-format or crypto
+changes — existing vaults open unchanged.
+
+### v3.0.1 — 2026-06-18
+Stabilization patch. Scroll-and-fit layout so unlock/create-vault/workspace
+screens no longer clip on short terminals (with an 80x24 regression test);
+cp1252 console safety for `nyx --help`; publish-workflow Actions bumped to
+Node-24-compatible versions. Published the project ROADMAP.
+
 ### v3.0.0 "Nexus" — 2026-06-13
 Complete TUI v3 rewrite on the Obsidian Tactical design system. Resolved
 every CRITICAL/HIGH data-integrity item from the pre-release security audit
@@ -34,20 +51,7 @@ fully green cross-platform CI matrix (Linux + Windows; Python 3.12/3.13/3.14).
 
 ## Planned
 
-### 3.0.x — Stabilization (patch line)
-
-**v3.0.1** (in progress)
-- Maximize the console window on Windows when the packaged executable is
-  launched by double-click.
-- Scroll-and-fit layout: the unlock, create-vault, and workspace screens
-  scroll instead of clipping their content on short terminals.
-- Small-viewport regression test (Textual Pilot) to keep the clip from
-  recurring.
-- Bump the publish workflow's GitHub Actions to Node-24-compatible versions.
-- Make console output encoding-safe on legacy cp1252 Windows consoles
-  (fixes a UnicodeEncodeError in `nyx --help` and the release build script).
-
-### v3.1.0 "Aegis" — Security-hardening completeness (minor)
+### v3.2.0 "Aegis" — Security-hardening completeness (minor)
 Closes the remaining pre-release-audit items and pays down internal quality
 debt, completing the security posture before new feature work.
 
@@ -57,20 +61,16 @@ Security:
 - Encrypted session key on Linux, at parity with the Windows keyring path (H5).
 - Persist KDF parameters in vault metadata — groundwork for crypto-agility.
 
-Quality:
-- Restore CI lint and type-check gates to blocking.
-- Remove the legacy v2 screens and their build-spec references.
-- Fix the vault-open connection leak on integrity-verification failure.
-- Add a NYXORA_HOME environment variable for test isolation.
-- Rewrite the coverage-gaming test module into honest behavioral tests.
-
-### v3.2.0 "Janus" — Import / export & interoperability (minor)
+### v3.3.0 "Janus" — Import / export & interoperability (minor)
 Makes Nyxora adoptable by users migrating from other tools.
-- Importers for KeePass (.kdbx), Bitwarden, 1Password, and generic CSV.
+- Importer for KeePass (.kdbx) — the one major format not yet supported.
 - A first-class encrypted export format for Nyxora-to-Nyxora transfer.
 - Field mapping and de-duplication on import.
 
-### v3.3.0 "Argus" — Organization & visibility (minor)
+CSV, JSON, Bitwarden, and 1Password import already ship today via
+`nyx vault import` (since 2.0.0).
+
+### v3.4.0 "Argus" — Organization & visibility (minor)
 Helps users manage and understand large vaults.
 - Folders/groups, favorites, and richer tagging.
 - A natively rebuilt search experience.
@@ -78,7 +78,7 @@ Helps users manage and understand large vaults.
   breach-summary rollup from the existing HIBP intelligence.
 - Bulk operations (multi-select move/tag/delete).
 
-### v3.4.0 "Daedalus" — Automation & extensibility (minor, optional)
+### v3.5.0 "Daedalus" — Automation & extensibility (minor, optional)
 Plays to Nyxora's developer-tool heritage; may fold into 3.3 or defer.
 - Expanded CLI scripting and non-interactive flows.
 - A broader, stable SDK surface.
@@ -105,7 +105,7 @@ Built on the 4.0 crypto-agility layer.
 ## Cross-cutting commitments
 
 - **Test & CI integrity:** the cross-platform matrix stays green; lint/type
-  gates return to blocking in 3.1; every release pre-flight includes a visual
+  gates returned to blocking in 3.1 (Sentinel); every release pre-flight includes a visual
   check of the launched executable.
 - **Security posture:** each release remains auditable; a fresh security
   review precedes the 4.0 cryptographic re-architecture.
