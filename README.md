@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/primary-logo.png" alt="Nyxora — Tactical Secrets Vault" width="460"/>
+  <img src="https://raw.githubusercontent.com/scorpiocodex/Nyxora/main/assets/primary-logo.png" alt="Nyxora — Tactical Secrets Vault" width="460"/>
 
   <p><strong>Your passwords. Your machine. No cloud. No compromise.</strong></p>
 
@@ -23,7 +23,7 @@ nothing ever leaves it. No accounts. No cloud. No subscriptions.
 
 ## Preview
 
-![Nyxora TUI — Obsidian Tactical vault browser](assets/tui-screenshot.png)
+![Nyxora TUI — interactive vault browser](https://raw.githubusercontent.com/scorpiocodex/Nyxora/main/assets/demo.gif)
 
 *`nyx tui` — interactive vault browser with live TOTP codes, strength ratings, and instant search*
 

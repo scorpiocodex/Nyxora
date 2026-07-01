@@ -1,0 +1,7 @@
+# Treat recorded demo GIFs as binary so git never CRLF-mangles them.
+*.gif binary
+
+# The VHS tape and seed script are consumed by Linux tooling (vhs / bash);
+# force LF so a Windows checkout can't introduce CRLF that breaks them.
+*.tape text eol=lf
+*.sh   text eol=lf
