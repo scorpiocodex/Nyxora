@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Animated README demo** — replaced the static preview screenshot with a
+  VHS-recorded TUI walkthrough (`assets/demo.tape`, regenerable via
+  `assets/demo_seed.sh` + `vhs`).
+
 ### Fixed
 - **TUI release codename** — the unlock footer, BUILD INFO panels, and the
   updates-screen corner showed the stale 3.0.0 codename "NEXUS"; they now

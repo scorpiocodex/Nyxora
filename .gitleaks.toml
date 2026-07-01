@@ -23,10 +23,14 @@ description = "Synthetic test fixtures + documentation false positives. Real sec
 
 # Path allowlist: the test suite is full of synthetic secrets (TOTP vectors,
 # fake API keys, test-password derivations) by design; HANDOFF.md is a dev
-# handoff note containing a throwaway test TOTP seed.
+# handoff note containing a throwaway test TOTP seed; the demo recording assets
+# embed a disposable "DemoPass123!" for an isolated /tmp vault (never a real
+# secret).
 paths = [
   '''(^|/)tests/''',
   '''^HANDOFF\.md$''',
+  '''^assets/demo_seed\.sh$''',
+  '''^assets/demo\.tape$''',
 ]
 
 # Regex allowlist (matched against the detected secret, repo-wide): these are
