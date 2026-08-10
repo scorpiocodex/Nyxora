@@ -219,23 +219,44 @@ class VaultStore:
             ).fetchone()
             _stored_ver = _ver_row["value"] if _ver_row else "1"
             if _stored_ver != SCHEMA_VERSION:
-                # Add column if missing (safe on any SQLite version)
-                _existing_cols = [
-                    r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
-                ]
-                if "totp_secret_enc" not in _existing_cols:
-                    with conn:
+                # Authenticate the root key BEFORE writing anything. The schema
+                # fingerprint cannot be checked yet — on a v1 vault it is stamped
+                # over the v1 schema text and would mismatch even for the right
+                # password — but the vault-wide HMAC is schema-independent and
+                # key-bound, so it rejects a wrong password here.
+                #
+                # Without this gate a failed unlock rewrote the fingerprint under
+                # the wrong key and flipped schema_version to "2"; the next open
+                # with the CORRECT password then skipped the migration and failed
+                # verification, bricking the vault permanently.
+                self._verify_vault_hmac(conn)
+
+                # One transaction for the whole migration so a crash part-way
+                # through cannot leave a half-migrated vault. BEGIN is explicit:
+                # sqlite3 opens implicit transactions only for DML, so the DDL
+                # below would otherwise autocommit on its own and escape the
+                # rollback.
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    # Add column if missing (safe on any SQLite version)
+                    _existing_cols = [
+                        r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
+                    ]
+                    if "totp_secret_enc" not in _existing_cols:
                         conn.execute(
                             "ALTER TABLE entries ADD COLUMN totp_secret_enc BLOB"
                         )
-                # Update stored version
-                with conn:
+                    # Update stored version
                     conn.execute(
                         "UPDATE metadata SET value=? WHERE key='schema_version'",
                         (SCHEMA_VERSION,),
                     )
-                # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
-                self._write_schema_fingerprint(conn)
+                    # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
+                    self._exec_write_schema_fingerprint(conn)
+                except BaseException:
+                    conn.rollback()
+                    raise
+                conn.commit()
             # ── End migration ──────────────────────────────────────────────
 
             # Verify schema fingerprint first
@@ -303,14 +324,23 @@ class VaultStore:
         return self._crypto.compute_hmac(combined, hmac_key)
 
     def _write_schema_fingerprint(self, conn: sqlite3.Connection) -> None:
+        with conn:
+            self._exec_write_schema_fingerprint(conn)
+
+    def _exec_write_schema_fingerprint(self, conn: sqlite3.Connection) -> None:
+        """Stamp the fingerprint without committing.
+
+        Split out from :meth:`_write_schema_fingerprint` so the migration in
+        :meth:`open` can enlist it in a single transaction with the rest of the
+        schema change instead of committing it independently.
+        """
         assert self._hmac_key is not None
         fp = self._compute_schema_fingerprint(self._hmac_key)
         now = int(time.time())
-        with conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO schema_fingerprint (id, fingerprint, computed_at) VALUES (1, ?, ?)",
-                (fp, now),
-            )
+        conn.execute(
+            "INSERT OR REPLACE INTO schema_fingerprint (id, fingerprint, computed_at) VALUES (1, ?, ?)",
+            (fp, now),
+        )
 
     def _verify_schema_fingerprint(self, conn: sqlite3.Connection) -> None:
         assert self._hmac_key is not None
