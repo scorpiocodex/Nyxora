@@ -18,6 +18,7 @@ Usage::
         for entry in client.list(tag="prod"):
             print(entry.title, entry.username)
 """
+
 from __future__ import annotations
 
 import builtins
@@ -125,6 +126,7 @@ class VaultClient:
         else:
             # Use existing CLI session
             from nyxora.cli.helpers import load_session
+
             session = load_session()
             if session is None:
                 raise NyxoraError(
@@ -154,6 +156,7 @@ class VaultClient:
             return self._vault_path
         from nyxora.cli.helpers import load_profiles
         from nyxora.utils.config import Config
+
         data = load_profiles()
         active = data.get("active")
         if active and active in data.get("profiles", {}):
@@ -244,8 +247,13 @@ class VaultClient:
             The new entry's UUID string.
         """
         return self._require_open().add_entry(
-            title=title, password=password, username=username,
-            url=url, notes=notes, tags=tags, custom=custom,
+            title=title,
+            password=password,
+            username=username,
+            url=url,
+            notes=notes,
+            tags=tags,
+            custom=custom,
             totp_secret=totp_secret,
         )
 
@@ -263,9 +271,15 @@ class VaultClient:
     ) -> None:
         """Update one or more fields on an existing entry."""
         self._require_open().update_entry(
-            entry_id, title=title, password=password,
-            username=username, url=url, notes=notes,
-            tags=tags, custom=custom, totp_secret=totp_secret,
+            entry_id,
+            title=title,
+            password=password,
+            username=username,
+            url=url,
+            notes=notes,
+            tags=tags,
+            custom=custom,
+            totp_secret=totp_secret,
         )
 
     def delete(self, entry_id: str) -> None:
@@ -285,11 +299,10 @@ class VaultClient:
             NyxoraError: if the entry has no TOTP secret.
         """
         import pyotp
+
         record = self.get(entry_id)
         if not record.totp_secret:
-            raise NyxoraError(
-                f"Entry '{record.title}' has no TOTP secret configured."
-            )
+            raise NyxoraError(f"Entry '{record.title}' has no TOTP secret configured.")
         return pyotp.TOTP(record.totp_secret).now()
 
     def health(self) -> Any:
@@ -299,6 +312,7 @@ class VaultClient:
             VaultHealthScore dataclass.
         """
         from nyxora.core.intel_engine import IntelEngine
+
         entries = self.list()
         intel = IntelEngine(self._engine)  # type: ignore[arg-type]
         return intel.compute_health_score(entries)
