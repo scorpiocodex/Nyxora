@@ -72,3 +72,8 @@ build/
 
 # Internal dev session-handoff doc — not for the public repo
 HANDOFF.md
+
+# Dev artifacts (not consumed by CI; kept out of the tree)
+uv.lock
+release_notes_*.md
+RELEASE_NOTES_*.md
