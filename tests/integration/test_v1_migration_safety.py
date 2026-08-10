@@ -26,7 +26,7 @@ import pytest
 
 from nyxora.core import vault_store as vs
 from nyxora.core.crypto_engine import CryptoEngine
-from nyxora.core.vault_store import VaultStore
+from nyxora.core.vault_store import SCHEMA_VERSION, VaultStore
 from nyxora.utils.exceptions import IntegrityError
 
 GOOD_PASSWORD = "correct-horse-battery-staple"
@@ -87,6 +87,18 @@ def _vault_digest(path: Path) -> dict[str, str]:
         if candidate.exists():
             digests[candidate.name] = hashlib.sha256(candidate.read_bytes()).hexdigest()
     return digests
+
+
+def _version_row(path: Path) -> str | None:
+    """Return the stored schema_version, or None if the row is absent."""
+    conn = sqlite3.connect(str(path))
+    try:
+        row = conn.execute(
+            "SELECT value FROM metadata WHERE key='schema_version'"
+        ).fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
 
 
 def _read_state(path: Path) -> tuple[str, bytes, list[str]]:
@@ -325,6 +337,119 @@ def test_v1_fixture_is_genuinely_v1(tmp_path: Path):
         "||".join(sorted(vs._ALL_SCHEMA_STMTS)).encode("utf-8"), hmac_key
     )
     assert fingerprint != v2_fingerprint
+
+
+_WRITE_KEYWORDS = ("insert", "update", "delete", "replace", "alter", "drop", "create")
+
+
+def _open_capturing_sql(
+    path: Path, password: str, salt: bytes, monkeypatch: pytest.MonkeyPatch
+) -> tuple[VaultStore, list[str]]:
+    """Open the vault, returning the SQL ``open()`` itself ran.
+
+    The returned list is a snapshot taken the moment ``open()`` returns.
+    Statements from later calls are deliberately excluded — reads such as
+    ``get_entry`` legitimately write (``accessed_at`` refresh, audit row), and
+    this helper is about whether *opening* mutates the vault.
+    """
+    statements: list[str] = []
+    original_connect = VaultStore._connect
+
+    def traced(self: VaultStore, p: Path) -> sqlite3.Connection:
+        conn = original_connect(self, p)
+        conn.set_trace_callback(statements.append)
+        return conn
+
+    monkeypatch.setattr(VaultStore, "_connect", traced)
+    engine = _fast_engine()
+    store = VaultStore(engine)
+    store.open(path, engine.derive_key(password, salt))
+    return store, list(statements)
+
+
+def _write_statements(statements: list[str]) -> list[str]:
+    out = []
+    for sql in statements:
+        head = sql.strip().split(None, 1)[0].lower() if sql.strip() else ""
+        if head in _WRITE_KEYWORDS:
+            out.append(" ".join(sql.split())[:80])
+    return out
+
+
+def test_schema_version_persists_after_first_open(tmp_path: Path, monkeypatch):
+    """A vault missing its schema_version row must gain one on first unlock,
+    and the migration must not re-fire on subsequent unlocks.
+
+    A plain UPDATE matches zero rows when the marker is absent, which left
+    open() writing to the vault on *every* successful unlock.
+    """
+    path = tmp_path / "noversion.nyx"
+    engine = _fast_engine()
+    salt = engine.generate_salt()
+
+    store = VaultStore(engine)
+    store.initialize(path, engine.derive_key(GOOD_PASSWORD, salt))
+    entry_id = store.add_entry(title="prod-db", password="hunter2")
+    store.close()
+
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute("DELETE FROM metadata WHERE key='schema_version'")
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+    assert _version_row(path) is None, "fixture still has a schema_version row"
+
+    # (b) first open with the correct password succeeds...
+    store = _attempt_open(path, GOOD_PASSWORD, salt)
+    try:
+        assert store.get_entry(entry_id).password == "hunter2"
+    finally:
+        store.close()
+
+    # (c) ...and the marker now exists.
+    assert _version_row(path) == SCHEMA_VERSION, (
+        "schema_version was not persisted — migration will re-fire on every open"
+    )
+
+    # (d) a second open must not migrate again: no writes, no byte churn.
+    after_first = _vault_digest(path)
+    store, statements = _open_capturing_sql(path, GOOD_PASSWORD, salt, monkeypatch)
+    store.close()
+
+    assert _write_statements(statements) == [], (
+        "post-migration open executed write statements: "
+        f"{_write_statements(statements)}"
+    )
+    assert _vault_digest(path) == after_first, "second open mutated the vault"
+    assert _version_row(path) == SCHEMA_VERSION
+
+
+def test_migrated_v1_vault_open_is_read_only(v1_vault, monkeypatch):
+    """After a v1 vault has been migrated, opening it is a pure read."""
+    path, salt, entry_id = v1_vault
+
+    store = _attempt_open(path, GOOD_PASSWORD, salt)  # migrates
+    store.close()
+    assert _version_row(path) == SCHEMA_VERSION
+
+    version_before, fingerprint_before, columns_before = _read_state(path)
+
+    store, statements = _open_capturing_sql(path, GOOD_PASSWORD, salt, monkeypatch)
+    assert store.get_entry(entry_id).title == "prod-db"  # data survived intact
+    store.close()
+
+    assert _write_statements(statements) == [], (
+        f"re-open of a migrated vault wrote: {_write_statements(statements)}"
+    )
+    # get_entry refreshes accessed_at and appends an audit row, so raw bytes are
+    # expected to move here. Assert instead that the schema state the migration
+    # owns — version marker, fingerprint, columns — is untouched.
+    version_after, fingerprint_after, columns_after = _read_state(path)
+    assert version_after == version_before == SCHEMA_VERSION
+    assert fingerprint_after == fingerprint_before
+    assert columns_after == columns_before
 
 
 def test_backup_copy_of_v1_vault_is_independent(v1_vault, tmp_path: Path):

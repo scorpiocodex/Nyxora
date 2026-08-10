@@ -246,9 +246,14 @@ class VaultStore:
                         conn.execute(
                             "ALTER TABLE entries ADD COLUMN totp_secret_enc BLOB"
                         )
-                    # Update stored version
+                    # Persist the stored version. Upsert rather than UPDATE:
+                    # a plain UPDATE matches zero rows when the schema_version
+                    # row is absent, so the marker never lands and the migration
+                    # re-fires — making open() write on every unlock instead of
+                    # being read-only once migrated. Targets only this key.
                     conn.execute(
-                        "UPDATE metadata SET value=? WHERE key='schema_version'",
+                        "INSERT OR REPLACE INTO metadata (key, value)"
+                        " VALUES ('schema_version', ?)",
                         (SCHEMA_VERSION,),
                     )
                     # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
