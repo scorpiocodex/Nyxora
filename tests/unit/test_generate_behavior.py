@@ -15,9 +15,13 @@ import pytest
 from typer.testing import CliRunner
 
 from nyxora.cli import ui
+from nyxora.cli.commands.generate import EFF_LARGE_WORDLIST
 from nyxora.cli.main import app
 
 runner = CliRunner()
+
+# Same source the generator draws from, as a set for O(1) membership.
+_WORDLIST = set(EFF_LARGE_WORDLIST)
 
 
 @pytest.fixture(autouse=True)
@@ -71,10 +75,13 @@ def test_passphrase_word_count_and_separator():
     assert len(objs) == 1
     obj = objs[0]
     assert obj["word_count"] == 6
-    # words are joined by the chosen separator; wordlist words are letters only
+    # Words are joined by the chosen separator. The EFF large wordlist ships 4
+    # hyphenated entries (drop-down, felt-tip, t-shirt, yo-yo), so isalpha() is a
+    # false invariant that flakes ~0.31% per 6-word draw. Assert the words were
+    # drawn from the actual wordlist instead — stronger and deterministic.
     parts = obj["passphrase"].split(".")
     assert len(parts) == 6
-    assert all(p.isalpha() for p in parts), parts
+    assert all(p in _WORDLIST for p in parts), parts
 
 
 def test_api_key_applies_prefix():
