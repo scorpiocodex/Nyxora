@@ -56,6 +56,30 @@ jobs:
           name: dist
           path: dist/
 
+  # `nyx update` resolves its download from GitHub RELEASE ASSETS, not PyPI, so
+  # the built distributions must be attached to the release itself — the PyPI
+  # upload below does not do that.
+  attach-release-assets:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # scoped to THIS job only, to upload release assets.
+                       # Deliberately NOT combined with the publish job's
+                       # id-token: write — keep OIDC and release-write separate.
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      - name: Attach wheel + sdist to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            dist/*.whl dist/*.tar.gz --clobber
+
   publish:
     needs: build
     runs-on: ubuntu-latest
