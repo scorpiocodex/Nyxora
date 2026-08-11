@@ -452,6 +452,244 @@ def test_migrated_v1_vault_open_is_read_only(v1_vault, monkeypatch):
     assert columns_after == columns_before
 
 
+# ── Phase 2: healing vaults already bricked by the pre-3.1.1 bug ──────────────
+
+OTHER_PASSWORD = "a-third-distinct-password"
+
+
+def _make_healthy_v2_vault(path: Path, salt: bytes) -> str:
+    engine = _fast_engine()
+    store = VaultStore(engine)
+    store.initialize(path, engine.derive_key(GOOD_PASSWORD, salt))
+    entry_id = store.add_entry(title="prod-db", password="hunter2", username="svc")
+    store.close()
+    return entry_id
+
+
+def _make_migrated_v2_vault(path: Path, salt: bytes) -> str:
+    """v1 vault put through the real migration — the layout a victim has."""
+    entry_id = _make_v1_vault(path, salt)
+    store = _attempt_open(path, GOOD_PASSWORD, salt)
+    store.close()
+    return entry_id
+
+
+def _stamp_fingerprint_under(path: Path, password: str, salt: bytes) -> None:
+    """Overwrite the stored fingerprint with one computed under *password*."""
+    engine = _fast_engine()
+    hmac_key = engine.derive_hmac_key(engine.derive_key(password, salt))
+    fingerprint = engine.compute_hmac(
+        "||".join(sorted(vs._ALL_SCHEMA_STMTS)).encode("utf-8"), hmac_key
+    )
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO schema_fingerprint (id, fingerprint, computed_at)"
+            " VALUES (1, ?, ?)",
+            (fingerprint, int(time.time())),
+        )
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+
+@pytest.fixture()
+def bricked_vault(tmp_path: Path) -> tuple[Path, bytes, str]:
+    """A vault in the exact end state the pre-3.1.1 bug produced.
+
+    The vault must be *genuinely migrated*, not natively created at v2: the bug
+    only fired inside the migration branch, and ``ALTER TABLE`` appends
+    ``totp_secret_enc`` last whereas native creation places it mid-table. A
+    native v2 fixture would have a different column order and would not
+    represent any real victim.
+
+    So: build a v1 vault, migrate it through the real code path, then overwrite
+    the fingerprint with a wrong-key stamp — the exact end state the bug left,
+    without depending on the buggy code still existing.
+    """
+    path = tmp_path / "bricked.nyx"
+    salt = _fast_engine().generate_salt()
+    entry_id = _make_v1_vault(path, salt)
+
+    store = _attempt_open(path, GOOD_PASSWORD, salt)  # real migration
+    store.close()
+    assert _read_state(path)[0] == SCHEMA_VERSION
+    assert _read_state(path)[2][-1] == "totp_secret_enc", "expected appended column"
+
+    _stamp_fingerprint_under(path, WRONG_PASSWORD, salt)
+    return path, salt, entry_id
+
+
+def test_bricked_vault_self_heals_on_correct_password(bricked_vault):
+    """The headline heal: a vault bricked by the bug opens again."""
+    path, salt, entry_id = bricked_vault
+
+    store = _attempt_open(path, GOOD_PASSWORD, salt)
+    try:
+        record = store.get_entry(entry_id)
+        assert record.title == "prod-db"
+        assert record.password == "hunter2"
+        assert record.username == "svc"
+    finally:
+        store.close()
+
+    # The fingerprint is now the correct-key stamp, so a second open is clean
+    # and does not need to heal again.
+    engine = _fast_engine()
+    hmac_key = engine.derive_hmac_key(engine.derive_key(GOOD_PASSWORD, salt))
+    expected = engine.compute_hmac(
+        "||".join(sorted(vs._ALL_SCHEMA_STMTS)).encode("utf-8"), hmac_key
+    )
+    assert _read_state(path)[1] == expected, "heal did not re-stamp under the correct key"
+
+    store = _attempt_open(path, GOOD_PASSWORD, salt)
+    store.close()
+
+
+def test_heal_emits_a_notice(bricked_vault):
+    """A silent repair of an integrity tag would be unacceptable."""
+    path, salt, _ = bricked_vault
+    with pytest.warns(RuntimeWarning, match="self-heal|fingerprint"):
+        store = _attempt_open(path, GOOD_PASSWORD, salt)
+        store.close()
+
+
+def test_heal_does_not_fire_on_wrong_password(bricked_vault):
+    """Gate 1: the HMAC check must reject a wrong password, leaving no writes."""
+    path, salt, _ = bricked_vault
+    before = _vault_digest(path)
+
+    with pytest.raises(IntegrityError):
+        _attempt_open(path, OTHER_PASSWORD, salt)
+
+    assert _vault_digest(path) == before, "a wrong-password heal attempt wrote to the vault"
+
+
+def test_bricking_password_still_cannot_open(bricked_vault):
+    """The wrong password that caused the brick must not become a valid key.
+
+    Its stamp *matches* the stored fingerprint, so verification gets past the
+    fingerprint check — the vault-wide HMAC is what rejects it.
+    """
+    path, salt, _ = bricked_vault
+    before = _vault_digest(path)
+
+    with pytest.raises(IntegrityError):
+        _attempt_open(path, WRONG_PASSWORD, salt)
+
+    assert _vault_digest(path) == before
+
+
+def test_heal_does_not_mask_real_tampering(tmp_path: Path):
+    """Gate 1: entry data tampering must still be reported, never healed."""
+    path = tmp_path / "tampered.nyx"
+    salt = _fast_engine().generate_salt()
+    _make_migrated_v2_vault(path, salt)
+    _stamp_fingerprint_under(path, WRONG_PASSWORD, salt)
+
+    # Remove an entry behind the vault's back — vault_hmac no longer matches.
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute("DELETE FROM entries")
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+    before = _vault_digest(path)
+    with pytest.raises(IntegrityError):
+        _attempt_open(path, GOOD_PASSWORD, salt)
+    assert _vault_digest(path) == before, "tampered vault was written to"
+
+
+def test_heal_does_not_fire_on_structural_change(tmp_path: Path):
+    """Gate 3: a real structural change must not be blessed with a fresh stamp.
+
+    vault_hmac covers entry rows, not the schema, so it still verifies after an
+    extra column is grafted on. Only the structural comparison catches this.
+    """
+    path = tmp_path / "structural.nyx"
+    salt = _fast_engine().generate_salt()
+    _make_migrated_v2_vault(path, salt)
+
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute("ALTER TABLE entries ADD COLUMN backdoor TEXT")
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+    _stamp_fingerprint_under(path, WRONG_PASSWORD, salt)
+
+    before = _vault_digest(path)
+    with pytest.raises(IntegrityError):
+        _attempt_open(path, GOOD_PASSWORD, salt)
+    assert _vault_digest(path) == before, "structurally altered vault was re-stamped"
+
+
+def test_heal_does_not_fire_on_extra_table(tmp_path: Path):
+    """Gate 3: an added table is a structural change too."""
+    path = tmp_path / "extratable.nyx"
+    salt = _fast_engine().generate_salt()
+    _make_migrated_v2_vault(path, salt)
+
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute("CREATE TABLE exfil (id INTEGER PRIMARY KEY, data TEXT)")
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+    _stamp_fingerprint_under(path, WRONG_PASSWORD, salt)
+
+    before = _vault_digest(path)
+    with pytest.raises(IntegrityError):
+        _attempt_open(path, GOOD_PASSWORD, salt)
+    assert _vault_digest(path) == before
+
+
+def test_heal_does_not_fire_on_a_native_v2_vault(tmp_path: Path):
+    """Gate 3: a vault that never went through the migration is not a victim.
+
+    The bug only fired inside the migration branch, so a natively created v2
+    vault cannot have been bricked by it. A wrong fingerprint there is real
+    corruption and must keep being reported — this is what keeps
+    test_tamper_detection.py::test_tamper_schema_fingerprint_detected honest.
+    """
+    path = tmp_path / "native.nyx"
+    salt = _fast_engine().generate_salt()
+    _make_healthy_v2_vault(path, salt)
+    assert _read_state(path)[2].index("totp_secret_enc") != len(_read_state(path)[2]) - 1, (
+        "native vault unexpectedly has the migrated column order"
+    )
+    _stamp_fingerprint_under(path, WRONG_PASSWORD, salt)
+
+    before = _vault_digest(path)
+    with pytest.raises(IntegrityError):
+        _attempt_open(path, GOOD_PASSWORD, salt)
+    assert _vault_digest(path) == before, "a native v2 vault was healed"
+
+
+def test_heal_does_not_fire_on_unmigrated_v1_vault(v1_vault):
+    """Gate 2: a v1 vault must migrate through the normal path, not be healed.
+
+    A wrong password here must still be rejected without writes.
+    """
+    path, salt, entry_id = v1_vault
+    before = _vault_digest(path)
+
+    with pytest.raises(IntegrityError):
+        _attempt_open(path, WRONG_PASSWORD, salt)
+    assert _vault_digest(path) == before
+
+    store = _attempt_open(path, GOOD_PASSWORD, salt)
+    try:
+        assert store.get_entry(entry_id).password == "hunter2"
+    finally:
+        store.close()
+
+
 def test_backup_copy_of_v1_vault_is_independent(v1_vault, tmp_path: Path):
     """Sanity: the fixture is a real file that can be copied and opened."""
     path, salt, entry_id = v1_vault
