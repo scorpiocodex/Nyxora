@@ -111,14 +111,29 @@ def unlock(
             except NyxoraError as e:
                 _session.record_failed_attempt()
                 wipe_memory(root_key)
-                # IntegrityError on open almost always means wrong password,
-                # not actual tampering — give the user an accurate message.
+                # IntegrityError on open almost always means a wrong password
+                # rather than real tampering. Since 3.1.1 a vault bricked by the
+                # pre-3.1.1 migration bug self-heals during open(), so an
+                # IntegrityError reaching here means the heal did NOT apply —
+                # the message must not promise a repair the user cannot get.
+                #
+                # Deliberately routes to neither 'nyx vault health-check' nor
+                # 'nyx backup restore': both require an unlocked session, so both
+                # are dead ends for someone who cannot open the vault.
+                # 'nyx recovery restore-capsule' is the one recovery command that
+                # runs without a session.
                 from nyxora.utils.exceptions import IntegrityError
                 if isinstance(e, IntegrityError):
                     ui.error_panel(
-                        "Wrong password or corrupted vault.\n"
-                        "If you are sure the password is correct, run "
-                        "'nyx vault health-check' to inspect vault integrity."
+                        "Could not unlock the vault.\n\n"
+                        "This almost always means an incorrect master password — "
+                        "check it and try again.\n\n"
+                        "If you are certain the password is correct, the vault may "
+                        "be corrupted, or the .nyx and .salt files may no longer "
+                        "match (for example if only one of them was restored from a "
+                        "backup). Restore both files together from a backup copy. "
+                        "If you created a recovery capsule, "
+                        "'nyx recovery restore-capsule' can recover your root key."
                     )
                 else:
                     ui.error_panel(e.user_message)

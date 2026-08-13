@@ -19,6 +19,7 @@ import os
 import sqlite3
 import time
 import uuid
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -100,6 +101,11 @@ HARDENED_PRAGMAS: list[str] = [
 ]
 
 SCHEMA_VERSION = "2"
+
+# Column added by the v1 -> v2 migration. ALTER TABLE can only append, so a
+# migrated vault carries it last while a natively created v2 vault has it in
+# the position declared in _SCHEMA_ENTRIES.
+V2_ENTRY_COLUMN = "totp_secret_enc"
 
 
 # ── Data classes ───────────────────────────────────────────────────────────────
@@ -219,27 +225,60 @@ class VaultStore:
             ).fetchone()
             _stored_ver = _ver_row["value"] if _ver_row else "1"
             if _stored_ver != SCHEMA_VERSION:
-                # Add column if missing (safe on any SQLite version)
-                _existing_cols = [
-                    r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
-                ]
-                if "totp_secret_enc" not in _existing_cols:
-                    with conn:
+                # Authenticate the root key BEFORE writing anything. The schema
+                # fingerprint cannot be checked yet — on a v1 vault it is stamped
+                # over the v1 schema text and would mismatch even for the right
+                # password — but the vault-wide HMAC is schema-independent and
+                # key-bound, so it rejects a wrong password here.
+                #
+                # Without this gate a failed unlock rewrote the fingerprint under
+                # the wrong key and flipped schema_version to "2"; the next open
+                # with the CORRECT password then skipped the migration and failed
+                # verification, bricking the vault permanently.
+                self._verify_vault_hmac(conn)
+
+                # One transaction for the whole migration so a crash part-way
+                # through cannot leave a half-migrated vault. BEGIN is explicit:
+                # sqlite3 opens implicit transactions only for DML, so the DDL
+                # below would otherwise autocommit on its own and escape the
+                # rollback.
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    # Add column if missing (safe on any SQLite version)
+                    _existing_cols = [
+                        r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
+                    ]
+                    if "totp_secret_enc" not in _existing_cols:
                         conn.execute(
                             "ALTER TABLE entries ADD COLUMN totp_secret_enc BLOB"
                         )
-                # Update stored version
-                with conn:
+                    # Persist the stored version. Upsert rather than UPDATE:
+                    # a plain UPDATE matches zero rows when the schema_version
+                    # row is absent, so the marker never lands and the migration
+                    # re-fires — making open() write on every unlock instead of
+                    # being read-only once migrated. Targets only this key.
                     conn.execute(
-                        "UPDATE metadata SET value=? WHERE key='schema_version'",
+                        "INSERT OR REPLACE INTO metadata (key, value)"
+                        " VALUES ('schema_version', ?)",
                         (SCHEMA_VERSION,),
                     )
-                # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
-                self._write_schema_fingerprint(conn)
+                    # Rewrite schema fingerprint to match new _SCHEMA_ENTRIES
+                    self._exec_write_schema_fingerprint(conn)
+                except BaseException:
+                    conn.rollback()
+                    raise
+                conn.commit()
             # ── End migration ──────────────────────────────────────────────
 
             # Verify schema fingerprint first
-            self._verify_schema_fingerprint(conn)
+            try:
+                self._verify_schema_fingerprint(conn)
+            except IntegrityError:
+                # A vault bricked by the pre-3.1.1 migration bug fails here even
+                # for the correct password. Attempt a tightly gated repair; if
+                # the signature does not match exactly, re-raise unchanged.
+                if not self._try_heal_schema_fingerprint(conn):
+                    raise
 
             # Verify vault-wide HMAC
             self._verify_vault_hmac(conn)
@@ -303,14 +342,152 @@ class VaultStore:
         return self._crypto.compute_hmac(combined, hmac_key)
 
     def _write_schema_fingerprint(self, conn: sqlite3.Connection) -> None:
+        with conn:
+            self._exec_write_schema_fingerprint(conn)
+
+    def _exec_write_schema_fingerprint(self, conn: sqlite3.Connection) -> None:
+        """Stamp the fingerprint without committing.
+
+        Split out from :meth:`_write_schema_fingerprint` so the migration in
+        :meth:`open` can enlist it in a single transaction with the rest of the
+        schema change instead of committing it independently.
+        """
         assert self._hmac_key is not None
         fp = self._compute_schema_fingerprint(self._hmac_key)
         now = int(time.time())
-        with conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO schema_fingerprint (id, fingerprint, computed_at) VALUES (1, ?, ?)",
-                (fp, now),
+        conn.execute(
+            "INSERT OR REPLACE INTO schema_fingerprint (id, fingerprint, computed_at) VALUES (1, ?, ?)",
+            (fp, now),
+        )
+
+    def _schema_matches_migrated_v2(self, conn: sqlite3.Connection) -> bool:
+        """True when the live schema is exactly *a v1 vault migrated to v2*.
+
+        The stored fingerprint is an HMAC over the *code's* schema constants, so
+        it says nothing about the database's actual structure. This compares the
+        live schema against a throwaway in-memory database built from
+        ``_ALL_SCHEMA_STMTS`` — column-by-column rather than by SQL text, since a
+        table reached via ``ALTER TABLE`` stores different CREATE text than a
+        natively created one.
+
+        The comparison deliberately expects the *migrated* column order.
+        ``totp_secret_enc`` is declared mid-table in ``_SCHEMA_ENTRIES``, but
+        ``ALTER TABLE ADD COLUMN`` can only append, so a migrated vault carries
+        it last. That ordering is the fingerprint of having come through the
+        migration — and only vaults that went through the migration can have
+        been bricked by the pre-3.1.1 bug. A natively created v2 vault never
+        entered the migration branch, so a wrong fingerprint there is not this
+        bug and must keep being reported as tampering.
+        """
+        reference = sqlite3.connect(":memory:")
+        try:
+            for stmt in _ALL_SCHEMA_STMTS:
+                reference.execute(stmt)
+
+            objects_sql = (
+                "SELECT type, name FROM sqlite_master"
+                " WHERE name NOT LIKE 'sqlite_%'"
             )
+            # tuple(): the vault connection uses a sqlite3.Row factory, and Row
+            # objects are neither sortable nor comparable to plain tuples.
+            expected_objects = sorted(tuple(r) for r in reference.execute(objects_sql))
+            actual_objects = sorted(tuple(r) for r in conn.execute(objects_sql))
+            # Catches added/removed tables and any grafted-on view or trigger.
+            if expected_objects != actual_objects:
+                return False
+
+            for obj_type, name in expected_objects:
+                if obj_type != "table":
+                    continue  # pragma: no cover - schema declares tables only
+                # name comes from our own constants via the equality above.
+                columns_sql = f"PRAGMA table_info({name})"
+                expected_cols = [tuple(r)[1:] for r in reference.execute(columns_sql)]
+                if name == "entries":
+                    expected_cols = [
+                        c for c in expected_cols if c[0] != V2_ENTRY_COLUMN
+                    ] + [c for c in expected_cols if c[0] == V2_ENTRY_COLUMN]
+                actual_cols = [tuple(r)[1:] for r in conn.execute(columns_sql)]
+                if expected_cols != actual_cols:
+                    return False
+            return True
+        finally:
+            reference.close()
+
+    def _try_heal_schema_fingerprint(self, conn: sqlite3.Connection) -> bool:
+        """Repair a fingerprint stamped under the wrong key by the pre-3.1.1 bug.
+
+        Releases before 3.1.1 ran the v1→v2 migration before verifying anything,
+        so one wrong-password unlock re-stamped the schema fingerprint under the
+        wrong key and flipped ``schema_version`` to ``"2"``, locking the correct
+        password out permanently. Such a vault is fully intact — only the
+        fingerprint is wrong — so it can be repaired in place.
+
+        This is deliberately NOT a general "fingerprint mismatch → rewrite"
+        fallback. It repairs only that exact signature. Every condition must
+        hold, and any failure leaves the vault untouched and the original
+        rejection intact:
+
+        1. the vault-wide HMAC verifies under the entered key — proving both the
+           password is correct and the entry set is authentic;
+        2. the vault presents as already migrated — ``schema_version`` is current
+           and the v2 ``totp_secret_enc`` column exists;
+        3. the live schema is structurally identical to the expected v2 schema,
+           so the re-stamp blesses a known-good structure rather than whatever
+           happens to be on disk.
+
+        Returns True only if the vault was healed.
+        """
+        # (1) Authenticate the key and the entry set. This is the gate that stops
+        #     a wrong password, and stops real tampering being papered over.
+        try:
+            self._verify_vault_hmac(conn)
+        except IntegrityError:
+            return False
+
+        # (2) Only an already-migrated vault carries this signature.
+        # Gate 2: belt-and-suspenders invariant — provably subsumed by gate 3
+        # today (mutation-tested: removing this is caught by nothing). Kept
+        # deliberately so a future refactor of gate 3 can't silently re-open the
+        # heal path. Do not remove without re-checking that gate 3 still fully
+        # constrains structure.
+        version_row = conn.execute(
+            "SELECT value FROM metadata WHERE key='schema_version'"
+        ).fetchone()
+        if version_row is None or version_row["value"] != SCHEMA_VERSION:
+            return False
+        entry_columns = [
+            r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()
+        ]
+        if V2_ENTRY_COLUMN not in entry_columns:
+            return False
+
+        # (3) Never re-stamp a structure that is not the expected one.
+        # Gate 3: compares against the MIGRATED column order, not the native
+        # schema. ALTER TABLE ADD COLUMN can only APPEND, so a genuinely migrated
+        # vault has totp_secret_enc LAST, whereas a natively-created v2 vault has
+        # it mid-table. Matching native order here would refuse to heal every real
+        # victim. This gate also confines healing to migrated-order vaults,
+        # preserving tamper detection for natively-created v2 vaults (a bad
+        # fingerprint there is real corruption).
+        if not self._schema_matches_migrated_v2(conn):
+            return False
+
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            self._exec_write_schema_fingerprint(conn)
+        except BaseException:
+            conn.rollback()
+            raise
+        conn.commit()
+
+        warnings.warn(
+            "Vault self-heal: the schema fingerprint was stamped under the wrong "
+            "key by the pre-3.1.1 migration bug and has been re-stamped under the "
+            "correct key. Vault contents were verified intact and are unchanged.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return True
 
     def _verify_schema_fingerprint(self, conn: sqlite3.Connection) -> None:
         assert self._hmac_key is not None

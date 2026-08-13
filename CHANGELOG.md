@@ -7,15 +7,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Added
-- **Animated README demo** — replaced the static preview screenshot with a
-  VHS-recorded TUI walkthrough (`assets/demo.tape`, regenerable via
-  `assets/demo_seed.sh` + `vhs`).
+## [3.1.1] - 2026-08-11
 
 ### Fixed
+- **Data loss: a wrong master password could permanently brick a pre-2.6.0
+  vault.** The v1→v2 schema migration ran and committed *before* the password
+  was verified, so a single mistyped unlock re-stamped the schema fingerprint
+  under the wrong key and flipped the version marker — locking the correct
+  password out permanently. Migration is now gated behind vault-HMAC
+  verification and runs inside one transaction rolled back on failure, so a
+  failed unlock leaves the vault byte-for-byte unchanged. **Vaults already
+  bricked by this bug are repaired automatically on the next correct-password
+  unlock.** (#58)
+- Migrated vaults no longer re-run the migration — and write to disk — on every
+  unlock when the `schema_version` metadata row was absent.
+- Unlock-failure guidance no longer points to `nyx vault health-check` (which
+  needs an already-unlocked vault); it now suggests recovery paths a locked-out
+  user can actually use, including `nyx recovery restore-capsule`.
 - **TUI release codename** — the unlock footer, BUILD INFO panels, and the
-  updates-screen corner showed the stale 3.0.0 codename "NEXUS"; they now
-  read "SENTINEL". Version numbers were already correct. (#49)
+  updates-screen corner showed the stale 3.0.0 codename "NEXUS"; they now read
+  "SENTINEL". (#49)
+
+### Added
+- **Animated README demo** — replaced the static preview screenshot with a
+  VHS-recorded TUI walkthrough (`assets/demo.tape`, regenerable). (#50)
 
 ---
 
