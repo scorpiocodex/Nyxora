@@ -16,8 +16,9 @@
 ---
 
 Nyxora is an offline password manager that runs entirely in your terminal.
-Your vault is stored on your machine, encrypted with military-grade cryptography —
-nothing ever leaves it. No accounts. No cloud. No subscriptions.
+Your vault is stored on your machine, encrypted with Argon2id key derivation and
+XChaCha20-Poly1305 authenticated encryption — nothing ever leaves it. No accounts.
+No cloud. No subscriptions.
 
 ---
 
