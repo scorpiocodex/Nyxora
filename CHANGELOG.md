@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Project positioning** — README now states plainly that Nyxora is a personal
+  craft project rather than a maintained product, and the PyPI development
+  status classifier is corrected from Production/Stable to Beta.
+
 ## [3.1.1] - 2026-08-11
 
 ### Fixed
