@@ -16,8 +16,30 @@
 ---
 
 Nyxora is an offline password manager that runs entirely in your terminal.
-Your vault is stored on your machine, encrypted with military-grade cryptography —
-nothing ever leaves it. No accounts. No cloud. No subscriptions.
+Your vault is stored on your machine, encrypted with Argon2id key derivation and
+XChaCha20-Poly1305 authenticated encryption — nothing ever leaves it. No accounts.
+No cloud. No subscriptions.
+
+---
+
+## Project status
+
+Nyxora is a personal project, built and maintained by one developer as a craft
+exercise in applied cryptography and terminal UI design. It is actively
+developed, but it is **not a maintained product seeking production users**, and
+it has not been independently audited.
+
+It works, and the cryptography is implemented carefully — Argon2id key
+derivation, XChaCha20-Poly1305 authenticated encryption, per-entry HMAC
+integrity checks, and a cross-platform CI matrix with secret scanning and
+dependency CVE gates on every change. Known limitations are tracked openly in
+the [issue tracker](https://github.com/scorpiocodex/Nyxora/issues) rather than
+left undocumented.
+
+If you are looking for a password manager to trust with your primary
+credentials today, use something with an audit history and a maintenance team —
+Bitwarden, 1Password, or KeePassXC. If you want to read how an offline,
+zero-knowledge terminal vault is built, or try one, you are very welcome here.
 
 ---
 
@@ -210,7 +232,8 @@ with VaultClient(vault_path="~/.nyxora/vault.nyx",
 
 ## Contributing
 
-Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Issues and pull requests are welcome, though this is a solo project and
+responses may be slow. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
