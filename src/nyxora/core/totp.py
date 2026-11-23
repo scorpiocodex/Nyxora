@@ -1,6 +1,6 @@
 """TOTP codes for the secrets real services hand out.
 
-pyotp 2.11 started rejecting any secret that decodes to fewer than 112 bits. Many
+pyotp 2.12 started rejecting any secret that decodes to fewer than 112 bits. Many
 services still issue 80-bit secrets (16 base32 characters, the Google Authenticator
 default), and a password manager has to produce codes for the secret the user was
 given, not the one we would have chosen. pyotp documents ``min_secret_length_bits``

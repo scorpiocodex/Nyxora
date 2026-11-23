@@ -25,9 +25,11 @@ No cloud. No subscriptions.
 ## Project status
 
 Nyxora is a personal project, built and maintained by one developer as a craft
-exercise in applied cryptography and terminal UI design. It is actively
-developed, but it is **not a maintained product seeking production users**, and
-it has not been independently audited.
+exercise in applied cryptography and terminal UI design. It is not under active
+development: the author no longer uses it day to day, and it is kept working
+(compatibility and dependency fixes) rather than extended. It is **not a
+maintained product seeking production users**, and it has not been
+independently audited.
 
 It works, and the cryptography is implemented carefully — Argon2id key
 derivation, XChaCha20-Poly1305 authenticated encryption, per-entry HMAC
