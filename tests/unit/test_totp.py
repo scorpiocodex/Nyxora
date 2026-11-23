@@ -1,4 +1,4 @@
-"""ServiceTOTP: codes for the 80-bit secrets services issue, which pyotp 2.11+ rejects."""
+"""ServiceTOTP: codes for the 80-bit secrets services issue, which pyotp 2.12+ rejects."""
 
 import base64
 import hashlib

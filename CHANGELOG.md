@@ -7,8 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-11-23
+
 ### Fixed
-- **TOTP codes for 80-bit secrets.** pyotp 2.11 started refusing any secret that decodes to fewer
+- **TOTP codes for 80-bit secrets.** pyotp 2.12.0 started refusing any secret that decodes to fewer
   than 112 bits, and Nyxora only declares `pyotp>=2.9.0`, so a fresh install could no longer show or
   copy a code for the 16-character secrets that many services issue (the TUI showed a dash, the CLI
   raised). All TOTP code now goes through `nyxora.core.totp.ServiceTOTP`, which lowers pyotp's
@@ -19,6 +21,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Project positioning** — README now states plainly that Nyxora is a personal
   craft project rather than a maintained product, and the PyPI development
   status classifier is corrected from Production/Stable to Beta.
+- **Project status** — the README no longer says Nyxora is "actively developed". It is not: the
+  author no longer uses it day to day, and this release exists to keep the published package
+  working, not to extend it.
 
 ## [3.1.1] - 2026-08-11
 
