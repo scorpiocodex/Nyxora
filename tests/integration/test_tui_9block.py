@@ -620,7 +620,7 @@ def test_block9_overlay_binding_suppression(synthetic: SyntheticCtx) -> None:
             await pilot.pause(0.4)
             switcher = app.query_one("#workspace", ContentSwitcher)
             app.push_screen(TotpQrOverlay(
-                secret="ABCDEF234567",
+                secret="JBSWY3DPEHPK3PXP",
                 account_label="test@example.com",
             ))
             await pilot.pause()
