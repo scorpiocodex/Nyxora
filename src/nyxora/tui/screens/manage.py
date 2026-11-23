@@ -366,8 +366,8 @@ class ManageScreen(Static):
             totp_secret = getattr(e, "totp_secret", None)
             if totp_secret:
                 try:
-                    import pyotp
-                    totp_obj   = pyotp.TOTP(totp_secret)
+                    from nyxora.core.totp import ServiceTOTP
+                    totp_obj   = ServiceTOTP(totp_secret)
                     code       = totp_obj.now()
                     remaining  = 30 - (int(time.time()) % 30)
                     filled     = remaining // 3
@@ -571,9 +571,10 @@ class ManageScreen(Static):
             self.app.notify("No TOTP configured for this entry.", timeout=2)
             return
         try:
-            import pyotp
             import pyperclip
-            code = pyotp.TOTP(secret).now()
+
+            from nyxora.core.totp import ServiceTOTP
+            code = ServiceTOTP(secret).now()
             pyperclip.copy(code)
             self.app.notify(
                 f"TOTP {code[:3]} {code[3:]} copied.",
