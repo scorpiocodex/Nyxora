@@ -288,7 +288,7 @@ def totp(
     """Show the live TOTP code for an entry."""
     import time
 
-    import pyotp
+    from nyxora.core.totp import ServiceTOTP
 
     store, root_key = _open_vault()
     try:
@@ -303,7 +303,7 @@ def totp(
         def _show_code() -> None:
             secret = record.totp_secret
             assert secret is not None  # guaranteed by the guard above
-            totp_obj = pyotp.TOTP(secret)
+            totp_obj = ServiceTOTP(secret)
             code = totp_obj.now()
             remaining = 30 - (int(time.time()) % 30)
             filled = int((remaining / 30) * 20)

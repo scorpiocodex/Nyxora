@@ -205,7 +205,7 @@ def fzf(
 
     Requires fzf to be installed: https://github.com/junegunn/fzf
     """
-    import pyotp
+    from nyxora.core.totp import ServiceTOTP
 
     # Check fzf is available
     fzf_check = subprocess.run(
@@ -280,7 +280,7 @@ def fzf(
             if not record.totp_secret:
                 ui.error_panel("This entry has no TOTP secret stored.")
                 raise typer.Exit(1)
-            output = pyotp.TOTP(record.totp_secret).now()
+            output = ServiceTOTP(record.totp_secret).now()
         else:
             output = record.custom.get(field, "")
 
