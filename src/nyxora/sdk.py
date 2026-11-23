@@ -298,12 +298,12 @@ class VaultClient:
         Raises:
             NyxoraError: if the entry has no TOTP secret.
         """
-        import pyotp
+        from nyxora.core.totp import ServiceTOTP
 
         record = self.get(entry_id)
         if not record.totp_secret:
             raise NyxoraError(f"Entry '{record.title}' has no TOTP secret configured.")
-        return pyotp.TOTP(record.totp_secret).now()
+        return ServiceTOTP(record.totp_secret).now()
 
     def health(self) -> Any:
         """Compute and return the vault health score.

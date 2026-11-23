@@ -19,6 +19,7 @@ import pyotp
 
 from nyxora.core.crypto_engine import CryptoEngine, EncryptedField
 from nyxora.core.memory_guard import wipe_memory
+from nyxora.core.totp import ServiceTOTP
 from nyxora.utils.exceptions import RecoveryError
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -49,19 +50,19 @@ class RecoveryManager:
             secret: base32-encoded shared secret.
             window: number of 30-second windows to accept (drift tolerance).
         """
-        totp = pyotp.TOTP(secret)
+        totp = ServiceTOTP(secret)
         return totp.verify(token, valid_window=window)
 
     def get_totp_uri(
         self, secret: str, label: str, issuer: str = "NYXORA"
     ) -> str:
         """Return an otpauth:// URI for QR code generation."""
-        totp = pyotp.TOTP(secret)
+        totp = ServiceTOTP(secret)
         return totp.provisioning_uri(name=label, issuer_name=issuer)
 
     def get_totp_current(self, secret: str) -> str:
         """Return the current TOTP value (for testing/display)."""
-        return pyotp.TOTP(secret).now()  # pragma: no cover
+        return ServiceTOTP(secret).now()  # pragma: no cover
 
     # ── Emergency Recovery Capsule ─────────────────────────────────────────
     #

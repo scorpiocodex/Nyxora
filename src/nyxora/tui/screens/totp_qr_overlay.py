@@ -8,13 +8,13 @@ short to show an unclipped, scannable QR). Esc dismisses.
 """
 from __future__ import annotations
 
-import pyotp
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import Static
 
+from nyxora.core.totp import ServiceTOTP
 from nyxora.tui.screens.recovery import _render_qr
 
 
@@ -61,7 +61,7 @@ class TotpQrOverlay(Screen[None]):
 
     def _qr_text(self) -> str:
         """Render the otpauth URI as half-block QR text."""
-        uri = pyotp.TOTP(self.secret).provisioning_uri(
+        uri = ServiceTOTP(self.secret).provisioning_uri(
             name=self.account_label,
             issuer_name=self.issuer,
         )

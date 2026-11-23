@@ -383,7 +383,7 @@ def test_totp_qr_overlay_dismisses_on_escape():
         async with app.run_test(size=(140, 46)) as pilot:
             await pilot.pause(0.3)
             app.push_screen(TotpQrOverlay(
-                secret="ABCDEF234567",
+                secret="JBSWY3DPEHPK3PXP",
                 account_label="test@example.com",
             ))
             await pilot.pause()
@@ -472,7 +472,7 @@ def test_nav_suppressed_while_totpqr_overlay_active():
             await pilot.pause(0.3)
             switcher = app.query_one("#workspace", ContentSwitcher)
             app.push_screen(TotpQrOverlay(
-                secret="ABCDEF234567",
+                secret="JBSWY3DPEHPK3PXP",
                 account_label="test@example.com",
             ))
             await pilot.pause()
